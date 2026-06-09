@@ -1515,3 +1515,27 @@ a:focus-visible {
   color: var(--muted);
   text-align: right;
 }
+
+/* Attribution (#4) */
+.attribution-text {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.attribution-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.attribution-copy {
+  margin-top: 10px;
+  width: 100%;
+}

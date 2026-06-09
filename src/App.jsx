@@ -25,6 +25,7 @@ import { useLogoCatalog } from './hooks/useLogoCatalog.js';
 import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
 import { drawWheel, useWheelCanvas } from './hooks/useWheelCanvas.js';
+import { buildAttribution } from './utils/attribution.js';
 import { parseImportedPresets, serializeCustomPresets } from './utils/customPresets.js';
 import { DEFAULT_CONFIG, readConfigFromLocation, sanitizeConfig } from './utils/designConfig.js';
 import { copyCanvasToClipboard, downloadBlob, downloadCanvasImage } from './utils/download.js';
@@ -302,6 +303,7 @@ export default function App() {
   const [exportSize, setExportSize] = useState(1600);
   const [exportBackground, setExportBackground] = useState('preview');
   const [exportStatus, setExportStatus] = useState('');
+  const [attributionStatus, setAttributionStatus] = useState('');
   const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
@@ -316,6 +318,21 @@ export default function App() {
     [logoById, ringLogos]
   );
   const canvasDescription = `${selectedCenterLogo?.name || 'Selected'} logo centered with ${ringLogoNames.length} surrounding logos: ${ringLogoNames.join(', ')}. ${showHalo ? `Halo enabled at ${Math.round(haloOpacity * 100)} percent intensity.` : 'Halo disabled.'}`;
+
+  // Unique logos used in the current design (center first), for attribution (#4).
+  const usedLogos = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    for (const id of [centerLogo, ...ringLogos]) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const logo = logoById.get(id);
+      if (logo) list.push(logo);
+    }
+    return list;
+  }, [centerLogo, ringLogos, logoById]);
+
+  const attributionText = useMemo(() => buildAttribution(usedLogos), [usedLogos]);
 
   const wheelSettings = {
     backdrop,
@@ -556,6 +573,15 @@ export default function App() {
       setExportStatus('Copied PNG to clipboard.');
     } catch (error) {
       setExportStatus(error.message || 'Could not copy to clipboard.');
+    }
+  }
+
+  async function copyAttribution() {
+    try {
+      await navigator.clipboard.writeText(attributionText);
+      setAttributionStatus('Copied attribution.');
+    } catch {
+      setAttributionStatus('Copy failed — select the text manually.');
     }
   }
 
@@ -809,6 +835,21 @@ export default function App() {
               {uploadError && (
                 <p className="error-text" role="alert">
                   {uploadError}
+                </p>
+              )}
+            </section>
+
+            <section className="control-section" aria-labelledby="attribution-heading">
+              <SectionHeader id="attribution-heading" accent="blue" title="5. Attribution" meta={`${usedLogos.length} logos`} />
+              <p className="section-note">Credit for the logos in this design. Each Commons file page lists the author and license.</p>
+              <textarea className="attribution-text control-scrollbar" readOnly rows={6} value={attributionText} aria-label="Attribution text" />
+              <button type="button" className="secondary-action attribution-copy" onClick={copyAttribution}>
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+                <span>Copy attribution</span>
+              </button>
+              {attributionStatus && (
+                <p className="section-note" role="status" aria-live="polite">
+                  {attributionStatus}
                 </p>
               )}
             </section>
