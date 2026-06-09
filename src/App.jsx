@@ -1,12 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
   Check,
-  Cloud,
+  ChevronDown,
   Copy,
   Download,
+  FolderOpen,
   GripVertical,
   Image as ImageIcon,
   Moon,
@@ -125,20 +125,114 @@ function ThemeToggle({ theme, onChange }) {
   );
 }
 
-function CommonsStatus({ syncState, onRefresh }) {
+function RefreshButton({ syncState, onRefresh }) {
   const isSyncing = syncState.status === 'syncing';
-  const isLive = syncState.status === 'live' || syncState.status === 'cached';
-  const Icon = isLive ? Cloud : AlertTriangle;
+  const hint = `${(syncState.detail || syncState.label).replace(/\.$/, '')} — click to manually refresh them.`;
 
   return (
-    <div className={`commons-status commons-status-${syncState.status}`} role="status" aria-live="polite">
-      <Icon className="h-4 w-4" aria-hidden="true" focusable="false" />
-      <div>
-        <strong>{syncState.label}</strong>
-        <span>{syncState.detail}</span>
+    <button
+      type="button"
+      className="refresh-button"
+      onClick={() => onRefresh({ force: true })}
+      disabled={isSyncing}
+      title={hint}
+      aria-label={hint}
+    >
+      <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" focusable="false" />
+    </button>
+  );
+}
+
+function DesignToolbar({ presets, onSave, onApply, onDelete, onExport, onImport }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handlePointer(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  async function handleImport(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      await onImport(file);
+    } catch (error) {
+      window.alert(error.message || 'Could not import designs.');
+    }
+  }
+
+  return (
+    <div className="design-toolbar">
+      <div className="designs-menu" ref={menuRef}>
+        <button type="button" className="header-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          <FolderOpen className="h-4 w-4" aria-hidden="true" focusable="false" />
+          <span>My designs</span>
+          {presets.length > 0 && <span className="header-badge">{presets.length}</span>}
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+        </button>
+
+        {open && (
+          <div className="designs-dropdown" role="menu">
+            {presets.length === 0 ? (
+              <p className="designs-empty">
+                No saved designs yet. Use <strong>Save</strong> to keep the current design here.
+              </p>
+            ) : (
+              <ul className="designs-list">
+                {presets.map((preset) => (
+                  <li key={preset.id}>
+                    <button
+                      type="button"
+                      className="designs-apply"
+                      role="menuitem"
+                      onClick={() => {
+                        onApply(preset.config);
+                        setOpen(false);
+                      }}
+                    >
+                      {preset.name}
+                    </button>
+                    <button type="button" onClick={() => onDelete(preset.id)} aria-label={`Delete ${preset.name}`}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="designs-note">Saved in this browser (local storage), not the cloud.</p>
+          </div>
+        )}
       </div>
-      <button type="button" onClick={() => onRefresh({ force: true })} disabled={isSyncing} aria-label="Refresh Commons logos">
-        <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" focusable="false" />
+
+      <button type="button" className="header-button" onClick={onSave}>
+        <Save className="h-4 w-4" aria-hidden="true" focusable="false" />
+        <span>Save</span>
+      </button>
+
+      <label className="header-button">
+        <Upload className="h-4 w-4" aria-hidden="true" focusable="false" />
+        <span>Import</span>
+        <input type="file" accept="application/json,.json" onChange={handleImport} />
+      </label>
+
+      <button type="button" className="header-button" onClick={onExport} disabled={presets.length === 0}>
+        <Download className="h-4 w-4" aria-hidden="true" focusable="false" />
+        <span>Export</span>
       </button>
     </div>
   );
@@ -230,84 +324,6 @@ function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
           ))}
         </select>
       </label>
-    </div>
-  );
-}
-
-function CustomPresetPanel({ presets, onSave, onApply, onDelete, onExport, onImport }) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-
-  function handleSave(event) {
-    event.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSave(trimmed);
-    setName('');
-  }
-
-  async function handleImport(event) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    try {
-      await onImport(file);
-      setError('');
-    } catch (importError) {
-      setError(importError.message || 'Could not import presets.');
-    }
-  }
-
-  return (
-    <div className="custom-preset-panel">
-      <form className="custom-preset-save" onSubmit={handleSave}>
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Name this design"
-          aria-label="Custom preset name"
-          maxLength={60}
-        />
-        <button type="submit" className="secondary-action" disabled={!name.trim()}>
-          <Save className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-          <span>Save</span>
-        </button>
-      </form>
-
-      {presets.length > 0 && (
-        <ul className="custom-preset-list" aria-label="Saved presets">
-          {presets.map((preset) => (
-            <li key={preset.id} className="custom-preset-row">
-              <button type="button" className="custom-preset-apply" onClick={() => onApply(preset.config)} title={`Apply ${preset.name}`}>
-                {preset.name}
-              </button>
-              <button type="button" onClick={() => onDelete(preset.id)} aria-label={`Delete preset ${preset.name}`}>
-                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="custom-preset-io">
-        <button type="button" onClick={onExport} disabled={presets.length === 0}>
-          <Download className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-          <span>Export</span>
-        </button>
-        <label className="custom-preset-import">
-          <Upload className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-          <span>Import</span>
-          <input type="file" accept="application/json,.json" onChange={handleImport} />
-        </label>
-      </div>
-
-      {error && (
-        <p className="error-text" role="alert">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -556,6 +572,11 @@ export default function App() {
     importPresets(parseImportedPresets(text));
   }
 
+  function handleSaveDesign() {
+    const name = window.prompt('Name this design');
+    if (name && name.trim()) savePreset(name.trim(), designConfig);
+  }
+
   function applyPreset(preset) {
     setCenterLogo(preset.center);
     setRingLogos(preset.ring);
@@ -741,7 +762,15 @@ export default function App() {
           <p>Live Wikimedia logo clusters</p>
         </div>
         <div className="top-band-actions">
-          <CommonsStatus syncState={syncState} onRefresh={refreshCommons} />
+          <DesignToolbar
+            presets={customPresets}
+            onSave={handleSaveDesign}
+            onApply={applyConfig}
+            onDelete={deletePreset}
+            onExport={exportPresets}
+            onImport={importPresetsFromFile}
+          />
+          <RefreshButton syncState={syncState} onRefresh={refreshCommons} />
           <ThemeToggle theme={theme} onChange={setTheme} />
         </div>
       </header>
@@ -767,15 +796,6 @@ export default function App() {
                   </button>
                 ))}
               </div>
-
-              <CustomPresetPanel
-                presets={customPresets}
-                onSave={(name) => savePreset(name, designConfig)}
-                onApply={applyConfig}
-                onDelete={deletePreset}
-                onExport={exportPresets}
-                onImport={importPresetsFromFile}
-              />
             </section>
 
             <section className="control-section" aria-labelledby="central-logo-heading">
@@ -1075,6 +1095,8 @@ export default function App() {
       </div>
 
       <footer className="app-footer">
+        <span className="footer-sync">{syncState.detail || syncState.label}</span>
+        <span aria-hidden="true">/</span>
         <span>
           License{' '}
           <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noreferrer">

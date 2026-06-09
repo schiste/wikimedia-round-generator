@@ -1342,105 +1342,152 @@ a:focus-visible {
   }
 }
 
-/* Custom presets (#3) */
-.custom-preset-panel {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+/* Header design toolbar + My designs dropdown (#3) */
+.design-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.custom-preset-save {
-  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.custom-preset-save input {
-  flex: 1;
-  min-width: 0;
+.header-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  padding: 8px 10px;
+  padding: 7px 10px;
   font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.custom-preset-save input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.header-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-hover);
 }
 
-.custom-preset-list {
+.header-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-button input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.header-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.designs-menu {
+  position: relative;
+}
+
+.designs-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  padding: 8px;
+}
+
+.designs-list {
   list-style: none;
-  margin: 0;
+  margin: 0 0 6px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.custom-preset-row {
+.designs-list li {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.custom-preset-apply {
+.designs-apply {
   flex: 1;
   min-width: 0;
   text-align: left;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text);
   padding: 8px 10px;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition:
-    border-color 150ms ease,
-    background 150ms ease;
+  cursor: pointer;
 }
 
-.custom-preset-apply:hover {
-  border-color: var(--accent);
+.designs-apply:hover {
   background: var(--surface-hover);
 }
 
-.custom-preset-row > button {
+.designs-list li > button:last-child {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  padding: 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--muted);
+  cursor: pointer;
 }
 
-.custom-preset-row > button:hover {
+.designs-list li > button:last-child:hover {
   color: var(--text);
-  border-color: var(--accent);
+  background: var(--surface-hover);
 }
 
-.custom-preset-io {
-  display: flex;
-  gap: 8px;
+.designs-empty {
+  margin: 4px 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
-.custom-preset-io button,
-.custom-preset-import {
-  flex: 1;
+.designs-note {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted-strong);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.refresh-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 11px;
-  padding: 7px 10px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -1448,23 +1495,18 @@ a:focus-visible {
   cursor: pointer;
 }
 
-.custom-preset-io button:hover:not(:disabled),
-.custom-preset-import:hover {
-  color: var(--text);
+.refresh-button:hover:not(:disabled) {
   border-color: var(--accent);
+  color: var(--text);
 }
 
-.custom-preset-io button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
-.custom-preset-import input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+.footer-sync {
+  color: var(--muted);
 }
 
 /* Export options (#5) */
