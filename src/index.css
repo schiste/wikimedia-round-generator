@@ -1341,3 +1341,128 @@ a:focus-visible {
     transform: none;
   }
 }
+
+/* Custom presets (#3) */
+.custom-preset-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-preset-save {
+  display: flex;
+  gap: 8px;
+}
+
+.custom-preset-save input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.custom-preset-save input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.custom-preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-preset-apply {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.custom-preset-apply:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.custom-preset-row > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.custom-preset-row > button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.custom-preset-io {
+  display: flex;
+  gap: 8px;
+}
+
+.custom-preset-io button,
+.custom-preset-import {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.custom-preset-io button:hover:not(:disabled),
+.custom-preset-import:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.custom-preset-io button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-preset-import input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

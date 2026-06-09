@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Moon,
   RefreshCw,
+  Save,
   Sliders,
   Sparkles,
   Sun,
@@ -17,11 +18,13 @@ import {
 } from 'lucide-react';
 import { BACKDROP_THEMES, DEFAULT_LOGOS, HALO_COLORS, PRESETS, getBackdropFill } from './data/logos.js';
 import { useCommonsLogoSync } from './hooks/useCommonsLogoSync.js';
+import { useCustomPresets } from './hooks/useCustomPresets.js';
 import { useDesignUrlSync } from './hooks/useDesignUrlSync.js';
 import { useLogoCatalog } from './hooks/useLogoCatalog.js';
 import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
 import { useWheelCanvas } from './hooks/useWheelCanvas.js';
+import { parseImportedPresets, serializeCustomPresets } from './utils/customPresets.js';
 import { DEFAULT_CONFIG, readConfigFromLocation, sanitizeConfig } from './utils/designConfig.js';
 import { downloadBlob, downloadCanvasPng } from './utils/download.js';
 import {
@@ -179,6 +182,84 @@ function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
   );
 }
 
+function CustomPresetPanel({ presets, onSave, onApply, onDelete, onExport, onImport }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+
+  function handleSave(event) {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onSave(trimmed);
+    setName('');
+  }
+
+  async function handleImport(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      await onImport(file);
+      setError('');
+    } catch (importError) {
+      setError(importError.message || 'Could not import presets.');
+    }
+  }
+
+  return (
+    <div className="custom-preset-panel">
+      <form className="custom-preset-save" onSubmit={handleSave}>
+        <input
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Name this design"
+          aria-label="Custom preset name"
+          maxLength={60}
+        />
+        <button type="submit" className="secondary-action" disabled={!name.trim()}>
+          <Save className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+          <span>Save</span>
+        </button>
+      </form>
+
+      {presets.length > 0 && (
+        <ul className="custom-preset-list" aria-label="Saved presets">
+          {presets.map((preset) => (
+            <li key={preset.id} className="custom-preset-row">
+              <button type="button" className="custom-preset-apply" onClick={() => onApply(preset.config)} title={`Apply ${preset.name}`}>
+                {preset.name}
+              </button>
+              <button type="button" onClick={() => onDelete(preset.id)} aria-label={`Delete preset ${preset.name}`}>
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="custom-preset-io">
+        <button type="button" onClick={onExport} disabled={presets.length === 0}>
+          <Download className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+          <span>Export</span>
+        </button>
+        <label className="custom-preset-import">
+          <Upload className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+          <span>Import</span>
+          <input type="file" accept="application/json,.json" onChange={handleImport} />
+        </label>
+      </div>
+
+      {error && (
+        <p className="error-text" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   // Seed editor state from the shared URL hash once, falling back to defaults.
   const initialConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...readConfigFromLocation() }), []);
@@ -209,6 +290,7 @@ export default function App() {
   const [showGuides, setShowGuides] = useState(initialConfig.showGuides);
   const [backdrop, setBackdrop] = useState(initialConfig.backdrop);
   const [uploadError, setUploadError] = useState('');
+  const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
 
@@ -294,6 +376,18 @@ export default function App() {
     setRingScale(merged.ringScale);
     setShowGuides(merged.showGuides);
     setBackdrop(merged.backdrop);
+  }
+
+  function exportPresets() {
+    downloadBlob(serializeCustomPresets(customPresets), {
+      filename: 'wikiround-presets.json',
+      type: 'application/json;charset=utf-8'
+    });
+  }
+
+  async function importPresetsFromFile(file) {
+    const text = await file.text();
+    importPresets(parseImportedPresets(text));
   }
 
   function applyPreset(preset) {
@@ -459,6 +553,15 @@ export default function App() {
                   </button>
                 ))}
               </div>
+
+              <CustomPresetPanel
+                presets={customPresets}
+                onSave={(name) => savePreset(name, designConfig)}
+                onApply={applyConfig}
+                onDelete={deletePreset}
+                onExport={exportPresets}
+                onImport={importPresetsFromFile}
+              />
             </section>
 
             <section className="control-section" aria-labelledby="central-logo-heading">
