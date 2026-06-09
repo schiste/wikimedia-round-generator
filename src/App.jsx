@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Check,
   Cloud,
+  Copy,
   Download,
   Image as ImageIcon,
   Moon,
@@ -23,10 +24,10 @@ import { useDesignUrlSync } from './hooks/useDesignUrlSync.js';
 import { useLogoCatalog } from './hooks/useLogoCatalog.js';
 import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
-import { useWheelCanvas } from './hooks/useWheelCanvas.js';
+import { drawWheel, useWheelCanvas } from './hooks/useWheelCanvas.js';
 import { parseImportedPresets, serializeCustomPresets } from './utils/customPresets.js';
 import { DEFAULT_CONFIG, readConfigFromLocation, sanitizeConfig } from './utils/designConfig.js';
-import { downloadBlob, downloadCanvasPng } from './utils/download.js';
+import { copyCanvasToClipboard, downloadBlob, downloadCanvasImage } from './utils/download.js';
 import {
   MIN_LOGO_SCALE,
   getAutoLogoScale,
@@ -35,6 +36,14 @@ import {
 } from './utils/layout.js';
 import { sanitizeSvgMarkup } from './utils/svg.js';
 import { generateWheelSvg } from './utils/wheelSvg.js';
+
+const EXPORT_SIZES = [800, 1600, 2400, 4000];
+const EXPORT_BACKGROUNDS = [
+  { id: 'preview', label: 'Match preview' },
+  { id: 'transparent', label: 'Transparent' },
+  { id: 'white', label: 'White' },
+  { id: 'dark', label: 'Dark' }
+];
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
   return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
@@ -290,6 +299,9 @@ export default function App() {
   const [showGuides, setShowGuides] = useState(initialConfig.showGuides);
   const [backdrop, setBackdrop] = useState(initialConfig.backdrop);
   const [uploadError, setUploadError] = useState('');
+  const [exportSize, setExportSize] = useState(1600);
+  const [exportBackground, setExportBackground] = useState('preview');
+  const [exportStatus, setExportStatus] = useState('');
   const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
@@ -305,7 +317,7 @@ export default function App() {
   );
   const canvasDescription = `${selectedCenterLogo?.name || 'Selected'} logo centered with ${ringLogoNames.length} surrounding logos: ${ringLogoNames.join(', ')}. ${showHalo ? `Halo enabled at ${Math.round(haloOpacity * 100)} percent intensity.` : 'Halo disabled.'}`;
 
-  const { canvasRef, isRendering } = useWheelCanvas({
+  const wheelSettings = {
     backdrop,
     backdropFill,
     centerLateralAnchors,
@@ -321,7 +333,9 @@ export default function App() {
     ringScale: effectiveRingScale,
     showGuides,
     showHalo
-  });
+  };
+
+  const { canvasRef, isRendering } = useWheelCanvas(wheelSettings);
 
   // Full editable design, shared by URL sync (#2) and saved presets (#3).
   const designConfig = useMemo(
@@ -485,10 +499,23 @@ export default function App() {
     });
   }
 
+  // Resolve the chosen export background to a fill. "Match preview" follows the
+  // current backdrop; JPG has no alpha, so a transparent choice falls back to white.
+  function resolveExportFill(forJpg) {
+    const fill = exportBackground === 'preview' ? backdropFill : getBackdropFill(exportBackground);
+    return forJpg && !fill ? '#ffffff' : fill;
+  }
+
+  function buildExportCanvas(forJpg) {
+    const canvas = document.createElement('canvas');
+    drawWheel(canvas, exportSize, { ...wheelSettings, backdropFill: resolveExportFill(forJpg) });
+    return canvas;
+  }
+
   function generateVectorSvg() {
     return generateWheelSvg({
-      backdrop,
-      backdropFill,
+      backdrop: exportBackground === 'preview' ? backdrop : exportBackground,
+      backdropFill: resolveExportFill(false),
       centerLateralAnchors,
       centerLogo,
       centerScale: effectiveCenterScale,
@@ -512,8 +539,24 @@ export default function App() {
     });
   }
 
-  function downloadPNG() {
-    downloadCanvasPng(canvasRef.current, `wikimedia-wheel-${centerLogo}.png`);
+  async function downloadPNG() {
+    await downloadCanvasImage(buildExportCanvas(false), `wikimedia-wheel-${centerLogo}-${exportSize}.png`);
+  }
+
+  async function downloadJPG() {
+    await downloadCanvasImage(buildExportCanvas(true), `wikimedia-wheel-${centerLogo}-${exportSize}.jpg`, {
+      type: 'image/jpeg',
+      quality: 0.92
+    });
+  }
+
+  async function copyPNG() {
+    try {
+      await copyCanvasToClipboard(buildExportCanvas(false));
+      setExportStatus('Copied PNG to clipboard.');
+    } catch (error) {
+      setExportStatus(error.message || 'Could not copy to clipboard.');
+    }
   }
 
   return (
@@ -819,22 +862,56 @@ export default function App() {
           </div>
 
           <div className="export-bar">
-            <div>
+            <div className="export-info">
               <strong>Publish Design Assets</strong>
               <span>Exports use the currently rendered logo source.</span>
             </div>
 
-            <div>
+            <div className="export-options">
+              <label>
+                <span>Size</span>
+                <select value={exportSize} onChange={(event) => setExportSize(parseInt(event.target.value, 10))} aria-label="Export size">
+                  {EXPORT_SIZES.map((size) => (
+                    <option key={size} value={size}>
+                      {size} × {size} px
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Background</span>
+                <select value={exportBackground} onChange={(event) => setExportBackground(event.target.value)} aria-label="Export background">
+                  {EXPORT_BACKGROUNDS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="export-actions">
               <button type="button" onClick={downloadPNG} className="secondary-action">
                 <ImageIcon className="h-4 w-4" aria-hidden="true" focusable="false" />
-                <span>Download PNG</span>
+                <span>PNG</span>
               </button>
-
+              <button type="button" onClick={downloadJPG} className="secondary-action">
+                <ImageIcon className="h-4 w-4" aria-hidden="true" focusable="false" />
+                <span>JPG</span>
+              </button>
+              <button type="button" onClick={copyPNG} className="secondary-action">
+                <Copy className="h-4 w-4" aria-hidden="true" focusable="false" />
+                <span>Copy</span>
+              </button>
               <button type="button" onClick={downloadSVG} className="primary-action">
                 <Download className="h-4 w-4" aria-hidden="true" focusable="false" />
-                <span>Download SVG</span>
+                <span>SVG</span>
               </button>
             </div>
+
+            <p className="export-status" role="status" aria-live="polite">
+              {exportStatus}
+            </p>
           </div>
         </main>
       </div>

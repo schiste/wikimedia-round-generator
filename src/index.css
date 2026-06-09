@@ -1466,3 +1466,52 @@ a:focus-visible {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Export options (#5) */
+.export-bar {
+  flex-wrap: wrap;
+}
+
+.export-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.export-options {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.export-options label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.export-options select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.export-status {
+  flex-basis: 100%;
+  margin: 0;
+  min-height: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
