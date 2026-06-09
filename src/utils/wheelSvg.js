@@ -1,4 +1,4 @@
-import { CANVAS_SIZE, LOGO_VIEWBOX_SIZE, escapeAttribute, fitIntoSquare, formatNumber, getSvgParts, hexToRgb } from './svg.js';
+import { CANVAS_SIZE, LOGO_VIEWBOX_SIZE, escapeAttribute, fitIntoSquare, formatNumber, getSvgParts, hexToRgb, minifySvg } from './svg.js';
 import { getHaloGeometry, getRingAngle, getRingPoint } from './layout.js';
 
 function renderLogoSvg(logoById, logoId, x, y, scale) {
@@ -71,5 +71,5 @@ export function generateWheelSvg({
   });
 
   svg += '</svg>';
-  return svg;
+  return minifySvg(svg);
 }

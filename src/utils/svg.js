@@ -163,3 +163,13 @@ export function escapeAttribute(value) {
 export function formatNumber(value) {
   return Number.parseFloat(value.toFixed(3));
 }
+
+// Lightweight, render-safe SVG minification for export: drops comments and the
+// insignificant whitespace between tags. Only inter-tag whitespace (between `>`
+// and `<`) is collapsed, so text content and attribute values are untouched.
+export function minifySvg(markup) {
+  return markup
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/>\s+</g, '><')
+    .trim();
+}
