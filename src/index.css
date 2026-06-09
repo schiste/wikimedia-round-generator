@@ -180,6 +180,33 @@ a:focus-visible {
   flex: 1;
 }
 
+.app-footer {
+  display: flex;
+  min-height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--muted);
+  padding: 3px 18px;
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.app-footer a {
+  color: var(--muted);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.app-footer a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .sidebar {
   display: flex;
   width: 480px;

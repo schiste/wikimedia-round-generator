@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDown,
@@ -20,33 +20,21 @@ import { useCommonsLogoSync } from './hooks/useCommonsLogoSync.js';
 import { useLogoCatalog } from './hooks/useLogoCatalog.js';
 import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
+import { useWheelCanvas } from './hooks/useWheelCanvas.js';
 import { downloadBlob, downloadCanvasPng } from './utils/download.js';
 import {
   MIN_LOGO_SCALE,
   getAutoLogoScale,
   getCenterLogoScale,
-  getCollisionSafeLogoScale,
-  getRingAngle
+  getCollisionSafeLogoScale
 } from './utils/layout.js';
-import {
-  CANVAS_SIZE,
-  LOGO_VIEWBOX_SIZE,
-  fitIntoSquare,
-  hexToRgb,
-  sanitizeSvgMarkup
-} from './utils/svg.js';
+import { sanitizeSvgMarkup } from './utils/svg.js';
 import { generateWheelSvg } from './utils/wheelSvg.js';
 
 const INITIAL_RING_LOGOS = PRESETS[0].ring;
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
   return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
-}
-
-function drawLogoOnCanvas(ctx, imageEntry, x, y, size) {
-  if (!imageEntry?.image) return;
-  const fitted = fitIntoSquare(size, imageEntry.aspectRatio);
-  ctx.drawImage(imageEntry.image, x - fitted.width / 2, y - fitted.height / 2, fitted.width, fitted.height);
 }
 
 function SectionHeader({ accent = 'blue', icon, id, title, meta }) {
@@ -192,8 +180,6 @@ function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
 }
 
 export default function App() {
-  const canvasRef = useRef(null);
-
   const [theme, setTheme] = useTheme();
   const { remoteLogos, syncState, refreshCommons } = useCommonsLogoSync(DEFAULT_LOGOS);
   const [customLogos, setCustomLogos] = useState([]);
@@ -207,7 +193,7 @@ export default function App() {
   const [ringLogos, setRingLogos] = useState(INITIAL_RING_LOGOS);
 
   const [showHalo, setShowHalo] = useState(true);
-  const [haloColor, setHaloColor] = useState('#3470ff');
+  const [haloColor, setHaloColor] = useState('#0e65c0');
   const [haloOpacity, setHaloOpacity] = useState(0.2);
   const [haloRadius, setHaloRadius] = useState(260);
 
@@ -219,7 +205,6 @@ export default function App() {
 
   const [showGuides, setShowGuides] = useState(false);
   const [backdrop, setBackdrop] = useState('transparent');
-  const [isRendering, setIsRendering] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
@@ -235,85 +220,12 @@ export default function App() {
   );
   const canvasDescription = `${selectedCenterLogo?.name || 'Selected'} logo centered with ${ringLogoNames.length} surrounding logos: ${ringLogoNames.join(', ')}. ${showHalo ? `Halo enabled at ${Math.round(haloOpacity * 100)} percent intensity.` : 'Halo disabled.'}`;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    setIsRendering(true);
-
-    canvas.width = CANVAS_SIZE;
-    canvas.height = CANVAS_SIZE;
-    const center = CANVAS_SIZE / 2;
-
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    if (backdropFill) {
-      ctx.fillStyle = backdropFill;
-      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    }
-
-    if (showHalo) {
-      const rgb = hexToRgb(haloColor);
-      const rOuter = Math.max(ringRadius + 10, haloRadius);
-      const rInner = Math.max(0, 2 * ringRadius - rOuter);
-
-      const gradient = ctx.createRadialGradient(center, center, rInner, center, center, rOuter);
-      gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
-      gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${haloOpacity})`);
-      gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
-
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(center, center, rOuter, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if (showGuides) {
-      ctx.strokeStyle = backdrop === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.12)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 8]);
-
-      ctx.beginPath();
-      ctx.arc(center, center, ringRadius, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ringLogos.forEach((_, index) => {
-        const angle = getRingAngle(index, ringLogos.length, ringRotation, centerLateralAnchors);
-        const spokeX = center + ringRadius * Math.cos(angle);
-        const spokeY = center + ringRadius * Math.sin(angle);
-
-        ctx.beginPath();
-        ctx.moveTo(center, center);
-        ctx.lineTo(spokeX, spokeY);
-        ctx.stroke();
-      });
-
-      ctx.setLineDash([]);
-    }
-
-    drawLogoOnCanvas(ctx, imageCache[centerLogo], center, center, LOGO_VIEWBOX_SIZE * effectiveCenterScale);
-
-    ringLogos.forEach((id, index) => {
-      const ringImageEntry = imageCache[id];
-      if (!ringImageEntry) return;
-
-      const angle = getRingAngle(index, ringLogos.length, ringRotation, centerLateralAnchors);
-      const x = center + ringRadius * Math.cos(angle);
-      const y = center + ringRadius * Math.sin(angle);
-
-      drawLogoOnCanvas(ctx, ringImageEntry, x, y, LOGO_VIEWBOX_SIZE * effectiveRingScale);
-    });
-
-    setIsRendering(false);
-  }, [
+  const { canvasRef, isRendering } = useWheelCanvas({
     backdrop,
     backdropFill,
+    centerLateralAnchors,
     centerLogo,
-    effectiveCenterScale,
-    effectiveRingScale,
+    centerScale: effectiveCenterScale,
     haloColor,
     haloOpacity,
     haloRadius,
@@ -321,10 +233,10 @@ export default function App() {
     ringLogos,
     ringRadius,
     ringRotation,
+    ringScale: effectiveRingScale,
     showGuides,
-    showHalo,
-    centerLateralAnchors
-  ]);
+    showHalo
+  });
 
   function applyPreset(preset) {
     setCenterLogo(preset.center);
@@ -765,6 +677,23 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      <footer className="app-footer">
+        <span>
+          License{' '}
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noreferrer">
+            AGPL-3.0-or-later
+          </a>
+        </span>
+        <span aria-hidden="true">/</span>
+        <a href="https://github.com/schiste/wikimedia-round-generator" target="_blank" rel="noreferrer">
+          GitHub
+        </a>
+        <span aria-hidden="true">/</span>
+        <a href="https://commons.wikimedia.org/wiki/File:Wikimedia_logo_family_2009.svg" target="_blank" rel="noreferrer">
+          Special thanks to Guillom, the original author of that design
+        </a>
+      </footer>
     </div>
   );
 }
