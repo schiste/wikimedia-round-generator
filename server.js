@@ -2,14 +2,14 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_LOGOS } from './src/data/logos.js';
-import { createCommonsImageInfoUrl, getCommonsLogos as getCommonsLogoDefinitions, getPageForLogo } from './src/utils/commons.js';
+import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsLogos as getCommonsLogoDefinitions, getPageForLogo } from './src/utils/commons.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = parseInt(process.env.PORT || '4173', 10);
 const HOST = process.env.HOST || '127.0.0.1';
-const CACHE_TTL_MS = parseInt(process.env.LOGO_CACHE_TTL_MS || `${6 * 60 * 60 * 1000}`, 10);
+const CACHE_TTL_MS = parseInt(process.env.LOGO_CACHE_TTL_MS || `${COMMONS_CACHE_TTL_MS}`, 10);
 const STALE_TTL_MS = parseInt(process.env.LOGO_STALE_TTL_MS || `${7 * 24 * 60 * 60 * 1000}`, 10);
 const MAX_SVG_BYTES = parseInt(process.env.LOGO_MAX_SVG_BYTES || '250000', 10);
 const USER_AGENT =

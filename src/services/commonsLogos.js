@@ -1,13 +1,10 @@
 import { sanitizeSvgMarkup } from '../utils/svg.js';
-import { createCommonsImageInfoUrl, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
+import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
+import { indexById } from '../utils/collection.js';
 
 const CACHE_VERSION = 2;
 const CACHE_KEY = `wikiround.commonsLogos.v${CACHE_VERSION}`;
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-
-function toLogoMap(logos) {
-  return Object.fromEntries(logos.map((logo) => [logo.id, logo]));
-}
+const CACHE_TTL_MS = COMMONS_CACHE_TTL_MS;
 
 function normalizeLiveLogo(entry, fallbackLogo, source) {
   const svg = sanitizeSvgMarkup(entry.svg);
@@ -29,6 +26,16 @@ function normalizeLiveLogo(entry, fallbackLogo, source) {
   };
 }
 
+function normalizeEntries(entries, fallbackLogos, source) {
+  const fallbackById = indexById(fallbackLogos);
+  return entries
+    .map((entry) => {
+      const fallbackLogo = fallbackById[entry.id];
+      return fallbackLogo ? normalizeLiveLogo(entry, fallbackLogo, source) : null;
+    })
+    .filter(Boolean);
+}
+
 export function readCachedCommonsLogos(fallbackLogos) {
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
@@ -39,13 +46,7 @@ export function readCachedCommonsLogos(fallbackLogos) {
       return null;
     }
 
-    const fallbackById = toLogoMap(fallbackLogos);
-    const logos = payload.logos
-      .map((entry) => {
-        const fallbackLogo = fallbackById[entry.id];
-        return fallbackLogo ? normalizeLiveLogo(entry, fallbackLogo, 'cached-commons') : null;
-      })
-      .filter(Boolean);
+    const logos = normalizeEntries(payload.logos, fallbackLogos, 'cached-commons');
 
     if (logos.length === 0) return null;
 
@@ -100,13 +101,7 @@ async function fetchFromToolforgeEndpoint(fallbackLogos, { signal, force } = {})
     throw new Error('Toolforge logo endpoint returned an invalid payload');
   }
 
-  const fallbackById = toLogoMap(fallbackLogos);
-  const logos = payload.logos
-    .map((entry) => {
-      const fallbackLogo = fallbackById[entry.id];
-      return fallbackLogo ? normalizeLiveLogo(entry, fallbackLogo, payload.source || 'toolforge-cache') : null;
-    })
-    .filter(Boolean);
+  const logos = normalizeEntries(payload.logos, fallbackLogos, payload.source || 'toolforge-cache');
 
   if (logos.length === 0) {
     throw new Error('Toolforge logo endpoint returned no usable SVGs');

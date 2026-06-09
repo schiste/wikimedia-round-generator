@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchLiveCommonsLogos, readCachedCommonsLogos } from '../services/commonsLogos.js';
-
-function getLogoMap(logos) {
-  return Object.fromEntries(logos.map((logo) => [logo.id, logo]));
-}
+import { indexById } from '../utils/collection.js';
 
 function formatSyncTime(value) {
   if (!value) return '';
@@ -19,12 +16,24 @@ function getLiveLabel(source) {
   return source === 'commons-direct' ? 'Commons direct' : 'Commons live';
 }
 
-function getInitialSyncState() {
+function liveSyncState(result) {
   return {
-    status: 'fallback',
-    label: 'Bundled fallbacks',
-    detail: 'Waiting for Commons refresh.'
+    status: 'live',
+    label: getLiveLabel(result.source),
+    detail: `${result.logos.length} logos refreshed at ${formatSyncTime(result.fetchedAt)}.`
   };
+}
+
+function degradedSyncState(hasCache, detail) {
+  return {
+    status: hasCache ? 'cached' : 'fallback',
+    label: hasCache ? 'Commons cache' : 'Bundled fallbacks',
+    detail
+  };
+}
+
+function getInitialSyncState() {
+  return degradedSyncState(false, 'Waiting for Commons refresh.');
 }
 
 export function useCommonsLogoSync(fallbackLogos) {
@@ -33,33 +42,29 @@ export function useCommonsLogoSync(fallbackLogos) {
 
   useEffect(() => {
     const cached = readCachedCommonsLogos(fallbackLogos);
-    if (cached?.logos?.length) {
-      setRemoteLogos(getLogoMap(cached.logos));
-      setSyncState({
-        status: cached.isFresh ? 'cached' : 'fallback',
-        label: cached.isFresh ? 'Commons cache' : 'Bundled fallbacks',
-        detail: cached.isFresh ? `${cached.logos.length} logos cached at ${formatSyncTime(cached.cachedAt)}.` : 'Refreshing Commons logos.'
-      });
+    const hasCache = Boolean(cached?.logos?.length);
+    if (hasCache) {
+      setRemoteLogos(indexById(cached.logos));
+      setSyncState(
+        degradedSyncState(
+          cached.isFresh,
+          cached.isFresh ? `${cached.logos.length} logos cached at ${formatSyncTime(cached.cachedAt)}.` : 'Refreshing Commons logos.'
+        )
+      );
     }
 
     const controller = new AbortController();
 
     fetchLiveCommonsLogos(fallbackLogos, { signal: controller.signal })
       .then((result) => {
-        setRemoteLogos(getLogoMap(result.logos));
-        setSyncState({
-          status: 'live',
-          label: getLiveLabel(result.source),
-          detail: `${result.logos.length} logos refreshed at ${formatSyncTime(result.fetchedAt)}.`
-        });
+        setRemoteLogos(indexById(result.logos));
+        setSyncState(liveSyncState(result));
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
-        setSyncState({
-          status: cached?.logos?.length ? 'cached' : 'fallback',
-          label: cached?.logos?.length ? 'Commons cache' : 'Bundled fallbacks',
-          detail: cached?.logos?.length ? `Using cached logos. ${error.message}` : `Commons unavailable. ${error.message}`
-        });
+        setSyncState(
+          degradedSyncState(hasCache, hasCache ? `Using cached logos. ${error.message}` : `Commons unavailable. ${error.message}`)
+        );
       });
 
     return () => {
@@ -78,18 +83,10 @@ export function useCommonsLogoSync(fallbackLogos) {
 
       try {
         const result = await fetchLiveCommonsLogos(fallbackLogos, { force });
-        setRemoteLogos(getLogoMap(result.logos));
-        setSyncState({
-          status: 'live',
-          label: getLiveLabel(result.source),
-          detail: `${result.logos.length} logos refreshed at ${formatSyncTime(result.fetchedAt)}.`
-        });
+        setRemoteLogos(indexById(result.logos));
+        setSyncState(liveSyncState(result));
       } catch (error) {
-        setSyncState((current) => ({
-          status: Object.keys(remoteLogos).length ? 'cached' : 'fallback',
-          label: Object.keys(remoteLogos).length ? 'Commons cache' : 'Bundled fallbacks',
-          detail: error.message || current.detail
-        }));
+        setSyncState((current) => degradedSyncState(Object.keys(remoteLogos).length > 0, error.message || current.detail));
       }
     },
     [fallbackLogos, remoteLogos]

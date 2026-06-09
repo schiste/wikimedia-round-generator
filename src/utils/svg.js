@@ -9,7 +9,7 @@ export function hexToRgb(hex) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
       }
-    : { r: 52, g: 112, b: 255 };
+    : { r: 14, g: 101, b: 192 };
 }
 
 export function loadSvgAsImage(svgString) {
@@ -32,14 +32,20 @@ export function loadSvgAsImage(svgString) {
   });
 }
 
-export function sanitizeSvgMarkup(svgString) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, 'image/svg+xml');
+function parseSvgRoot(svgString) {
+  const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
   const root = doc.documentElement;
 
   if (!root || root.tagName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) {
     return null;
   }
+
+  return root;
+}
+
+export function sanitizeSvgMarkup(svgString) {
+  const root = parseSvgRoot(svgString);
+  if (!root) return null;
 
   root.querySelectorAll('script, foreignObject, iframe, object, embed, link').forEach((node) => {
     node.remove();
@@ -80,11 +86,9 @@ export function sanitizeSvgMarkup(svgString) {
 }
 
 export function getSvgParts(svgString) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, 'image/svg+xml');
-  const root = doc.documentElement;
+  const root = parseSvgRoot(svgString);
 
-  if (!root || root.tagName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) {
+  if (!root) {
     return {
       viewBox: `0 0 ${LOGO_VIEWBOX_SIZE} ${LOGO_VIEWBOX_SIZE}`,
       inner: '',

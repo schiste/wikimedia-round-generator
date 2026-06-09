@@ -168,7 +168,7 @@ export const PRESETS = [
     name: 'Classic Wikimedia Family',
     center: 'wikimedia',
     ring: ['wikipedia', 'commons', 'wikidata', 'wikisource', 'wikibooks', 'wikiquote', 'wiktionary', 'wikiversity', 'wikispecies', 'wikifunctions', 'wikivoyage'],
-    haloColor: '#3470ff',
+    haloColor: '#0e65c0',
     haloOpacity: 0.2,
     haloRadius: 260,
     ringRadius: 220,
@@ -178,7 +178,7 @@ export const PRESETS = [
     name: 'Core Knowledge Circle',
     center: 'wikimedia',
     ring: ['wikipedia', 'commons', 'wikidata', 'wiktionary', 'wikiversity', 'wikispecies', 'meta'],
-    haloColor: '#8b5cf6',
+    haloColor: '#5748b5',
     haloOpacity: 0.2,
     haloRadius: 260,
     ringRadius: 195,
@@ -188,7 +188,7 @@ export const PRESETS = [
     name: 'Developer & Data Hub',
     center: 'wikimedia',
     ring: ['wikidata', 'mediawiki', 'meta', 'wikifunctions'],
-    haloColor: '#34d399',
+    haloColor: '#71d1b3',
     haloOpacity: 0.2,
     haloRadius: 260,
     ringRadius: 195,
@@ -198,7 +198,7 @@ export const PRESETS = [
     name: 'All Logos',
     center: 'wikimedia',
     ring: ['wikipedia', 'commons', 'wikidata', 'wikisource', 'wikibooks', 'wikiquote', 'wiktionary', 'wikiversity', 'wikispecies', 'wikifunctions', 'wikivoyage', 'mediawiki', 'meta'],
-    haloColor: '#3470ff',
+    haloColor: '#0e65c0',
     haloOpacity: 0.2,
     haloRadius: 260,
     ringRadius: 230,
@@ -217,10 +217,18 @@ export function getBackdropFill(backdropId) {
   return BACKDROP_THEMES.find((backdropTheme) => backdropTheme.id === backdropId)?.fill;
 }
 
+// Official Wikimedia brand palette.
+// https://doc.wikimedia.org/codex/latest/style-guide/colors.html
 export const HALO_COLORS = [
-  { name: 'Sky Blue', hex: '#3470ff' },
-  { name: 'Royal Purple', hex: '#8b5cf6' },
-  { name: 'Emerald', hex: '#10b981' },
-  { name: 'Golden Glow', hex: '#f59e0b' },
-  { name: 'Crimson Warmth', hex: '#ef4444' }
+  { name: 'Blue', hex: '#0e65c0' },
+  { name: 'Bright Blue', hex: '#049dff' },
+  { name: 'Purple', hex: '#5748b5' },
+  { name: 'Green', hex: '#308557' },
+  { name: 'Bright Green', hex: '#71d1b3' },
+  { name: 'Dark Green', hex: '#305d70' },
+  { name: 'Yellow', hex: '#f0bc00' },
+  { name: 'Bright Yellow', hex: '#e9e7c4' },
+  { name: 'Orange', hex: '#ee8019' },
+  { name: 'Red', hex: '#970302' },
+  { name: 'Pink', hex: '#e679a6' }
 ];

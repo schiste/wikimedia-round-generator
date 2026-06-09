@@ -1,6 +1,10 @@
 export const COMMONS_API_ENDPOINT = 'https://commons.wikimedia.org/w/api.php';
 export const COMMONS_IMAGEINFO_PROPS = 'url|mime|timestamp|sha1';
 
+// Default lifetime for resolved Commons logo metadata, shared by the browser
+// cache (services/commonsLogos.js) and the Toolforge server cache (server.js).
+export const COMMONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
 export function getCommonsLogos(logos) {
   return logos.filter((logo) => logo.commonsTitle);
 }

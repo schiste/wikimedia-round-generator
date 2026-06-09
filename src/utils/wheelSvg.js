@@ -1,5 +1,5 @@
 import { CANVAS_SIZE, LOGO_VIEWBOX_SIZE, escapeAttribute, fitIntoSquare, formatNumber, getSvgParts, hexToRgb } from './svg.js';
-import { getRingAngle } from './layout.js';
+import { getHaloGeometry, getRingAngle, getRingPoint } from './layout.js';
 
 function renderLogoSvg(logoById, logoId, x, y, scale) {
   const logo = logoById.get(logoId);
@@ -38,16 +38,13 @@ export function generateWheelSvg({
 
   if (showHalo) {
     const rgb = hexToRgb(haloColor);
-    const rOuter = Math.max(ringRadius + 10, haloRadius);
-    const rInner = Math.max(0, 2 * ringRadius - rOuter);
-    const rInnerRatio = rInner / rOuter;
-    const rPeakRatio = ringRadius / rOuter;
+    const { rOuter, innerStop, peakStop } = getHaloGeometry(ringRadius, haloRadius);
 
     svg += `<defs>
       <radialGradient id="vectorHalo" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0"/>
-        <stop offset="${formatNumber(rInnerRatio * 100)}%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0"/>
-        <stop offset="${formatNumber(rPeakRatio * 100)}%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="${haloOpacity}"/>
+        <stop offset="${formatNumber(innerStop * 100)}%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0"/>
+        <stop offset="${formatNumber(peakStop * 100)}%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="${haloOpacity}"/>
         <stop offset="100%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0"/>
       </radialGradient>
     </defs>`;
@@ -60,8 +57,7 @@ export function generateWheelSvg({
 
     ringLogos.forEach((_, index) => {
       const angle = getRingAngle(index, ringLogos.length, ringRotation, centerLateralAnchors);
-      const spokeX = center + ringRadius * Math.cos(angle);
-      const spokeY = center + ringRadius * Math.sin(angle);
+      const { x: spokeX, y: spokeY } = getRingPoint(center, ringRadius, angle);
       svg += `<line x1="${center}" y1="${center}" x2="${formatNumber(spokeX)}" y2="${formatNumber(spokeY)}" stroke="${strokeColor}" stroke-width="2" stroke-dasharray="8,8"/>`;
     });
   }
@@ -70,8 +66,7 @@ export function generateWheelSvg({
 
   ringLogos.forEach((id, index) => {
     const angle = getRingAngle(index, ringLogos.length, ringRotation, centerLateralAnchors);
-    const x = center + ringRadius * Math.cos(angle);
-    const y = center + ringRadius * Math.sin(angle);
+    const { x, y } = getRingPoint(center, ringRadius, angle);
     svg += renderLogoSvg(logoById, id, x, y, ringScale);
   });
 

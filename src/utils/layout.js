@@ -22,6 +22,37 @@ export function getRingAngle(index, count, rotationDegrees, centerLateralAnchors
   return (index / count) * 2 * Math.PI - Math.PI / 2 + ((rotationDegrees + lateralOffset) * Math.PI) / 180;
 }
 
+export function getRingPoint(center, radius, angle) {
+  return {
+    x: center + radius * Math.cos(angle),
+    y: center + radius * Math.sin(angle)
+  };
+}
+
+const HALO_RING_PADDING = 10;
+
+// Shared halo geometry for the canvas renderer and the SVG exporter so both
+// produce an identical glow. Stops are expressed as 0..1 ratios of rOuter:
+// transparent at the center and at innerStop, peaking at the ring radius,
+// then fading back to transparent at the outer edge.
+export function getHaloGeometry(ringRadius, haloRadius) {
+  const rOuter = Math.max(ringRadius + HALO_RING_PADDING, haloRadius);
+  const rInner = Math.max(0, 2 * ringRadius - rOuter);
+
+  return {
+    rOuter,
+    rInner,
+    innerStop: rInner / rOuter,
+    peakStop: ringRadius / rOuter
+  };
+}
+
+// Diameter available to the center logo once the collision gap on each side is
+// reserved, i.e. how wide a logo can grow before it touches the ring at ringRadius.
+function usableDiameter(ringRadius) {
+  return 2 * Math.max(0, ringRadius - LOGO_COLLISION_GAP);
+}
+
 export function getDensityScaleCap(count) {
   if (count >= 18) return 0.54;
   if (count >= 13) return 0.68;
@@ -33,7 +64,7 @@ export function getDensityScaleCap(count) {
 export function getCollisionSafeLogoScale(ringRadius, ringCount) {
   const adjacentChord = ringCount > 1 ? 2 * ringRadius * Math.sin(Math.PI / ringCount) : Number.POSITIVE_INFINITY;
   const adjacentLimit = Number.isFinite(adjacentChord) ? (adjacentChord - LOGO_COLLISION_GAP) / LOGO_VIEWBOX_SIZE : MAX_LOGO_SCALE;
-  const centerLimit = (2 * Math.max(0, ringRadius - LOGO_COLLISION_GAP)) / (LOGO_VIEWBOX_SIZE * (1 + CENTER_LOGO_SCALE_RATIO));
+  const centerLimit = usableDiameter(ringRadius) / (LOGO_VIEWBOX_SIZE * (1 + CENTER_LOGO_SCALE_RATIO));
 
   return clamp(Math.min(adjacentLimit, centerLimit, MAX_LOGO_SCALE), MIN_LOGO_SCALE, MAX_LOGO_SCALE);
 }
@@ -44,6 +75,6 @@ export function getAutoLogoScale(ringRadius, ringCount) {
 }
 
 export function getCenterLogoScale(ringRadius, ringScale) {
-  const centerLimit = (2 * Math.max(0, ringRadius - LOGO_COLLISION_GAP)) / LOGO_VIEWBOX_SIZE - ringScale;
+  const centerLimit = usableDiameter(ringRadius) / LOGO_VIEWBOX_SIZE - ringScale;
   return clamp(ringScale * CENTER_LOGO_SCALE_RATIO, MIN_LOGO_SCALE, Math.min(MAX_CENTER_LOGO_SCALE, centerLimit));
 }
