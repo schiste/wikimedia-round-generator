@@ -37,6 +37,34 @@ button:disabled {
   cursor: not-allowed;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--focus, #fbbf24);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 760;
+  transform: translateY(-160%);
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .app-shell {
   --app-bg: #0a0f1a;
   --panel: #0e1524;
@@ -51,8 +79,11 @@ button:disabled {
   --muted-strong: #64748b;
   --accent: #0ea5e9;
   --accent-strong: #0284c7;
+  --accent-fill: #0369a1;
   --accent-soft: rgba(14, 165, 233, 0.16);
+  --focus: #fbbf24;
   --green: #10b981;
+  --green-fill: #047857;
   --green-soft: rgba(16, 185, 129, 0.14);
   --red: #ef4444;
   --amber: #f59e0b;
@@ -82,11 +113,14 @@ button:disabled {
   --muted-strong: #718096;
   --accent: #006bb6;
   --accent-strong: #00518e;
+  --accent-fill: #00518e;
   --accent-soft: rgba(0, 107, 182, 0.11);
+  --focus: #7c3aed;
   --green: #00866a;
+  --green-fill: #006b55;
   --green-soft: rgba(0, 134, 106, 0.12);
   --red: #d43f3a;
-  --amber: #b86d00;
+  --amber: #805000;
   --shadow: 0 24px 70px rgba(30, 45, 70, 0.18);
 }
 
@@ -178,7 +212,7 @@ button:disabled {
 }
 
 .theme-toggle button.active {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: white;
 }
 
@@ -520,12 +554,12 @@ button:disabled {
   height: 16px;
   place-items: center;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: white;
 }
 
 .logo-tile-green b {
-  background: var(--green);
+  background: var(--green-fill);
 }
 
 .commons-mark {
@@ -796,17 +830,12 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 9px;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
+  padding: 0;
   user-select: none;
-}
-
-.switch-control input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
 }
 
 .switch-track {
@@ -834,14 +863,14 @@ button:disabled {
     background 150ms ease;
 }
 
-.switch-control input:checked + .switch-track {
+.switch-control[aria-checked='true'] .switch-track {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-.switch-control input:checked + .switch-track::after {
+.switch-control[aria-checked='true'] .switch-track::after {
   transform: translateX(16px);
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 
 .upload-panel {
@@ -865,6 +894,7 @@ button:disabled {
 }
 
 .upload-panel label {
+  position: relative;
   display: flex;
   min-height: 116px;
   cursor: pointer;
@@ -887,6 +917,11 @@ button:disabled {
   color: var(--text);
 }
 
+.upload-panel label:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 28%, transparent);
+}
+
 .upload-panel label svg {
   margin-bottom: 8px;
 }
@@ -902,7 +937,13 @@ button:disabled {
 }
 
 .upload-panel input[type='file'] {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  opacity: 0;
 }
 
 .error-text {
@@ -1089,7 +1130,7 @@ button:disabled {
 
 .primary-action {
   border: 1px solid var(--accent-strong);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: white;
 }
 
@@ -1254,5 +1295,22 @@ button:disabled {
   .primary-action,
   .secondary-action {
     padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .preset-button:hover,
+  .color-row button:hover,
+  .color-row button.active {
+    transform: none;
   }
 }

@@ -40,7 +40,7 @@ import { generateWheelSvg } from './utils/wheelSvg.js';
 const INITIAL_RING_LOGOS = PRESETS[0].ring;
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
-  return <div className={className} dangerouslySetInnerHTML={{ __html: logo.svg }} />;
+  return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
 }
 
 function drawLogoOnCanvas(ctx, imageEntry, x, y, size) {
@@ -49,26 +49,32 @@ function drawLogoOnCanvas(ctx, imageEntry, x, y, size) {
   ctx.drawImage(imageEntry.image, x - fitted.width / 2, y - fitted.height / 2, fitted.width, fitted.height);
 }
 
-function SectionHeader({ accent = 'blue', icon, title, meta }) {
+function SectionHeader({ accent = 'blue', icon, id, title, meta }) {
   return (
     <div className="section-heading">
       <div className="section-title">
-        <span className={`status-dot status-dot-${accent}`} />
-        {icon}
-        <h2>{title}</h2>
+        <span className={`status-dot status-dot-${accent}`} aria-hidden="true" />
+        {icon && React.cloneElement(icon, { 'aria-hidden': true, focusable: 'false' })}
+        <h2 id={id}>{title}</h2>
       </div>
       {meta && <span className="section-meta">{meta}</span>}
     </div>
   );
 }
 
-function ToggleSwitch({ checked, onChange, label }) {
+function ToggleSwitch({ checked, onChange, label, showLabel = false }) {
   return (
-    <label className="switch-control">
-      <span>{label}</span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span className="switch-track" />
-    </label>
+    <button
+      type="button"
+      className="switch-control"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+    >
+      {showLabel && <span>{label}</span>}
+      <span className="switch-track" aria-hidden="true" />
+    </button>
   );
 }
 
@@ -86,12 +92,24 @@ function RangeControl({ label, valueLabel, children }) {
 
 function ThemeToggle({ theme, onChange }) {
   return (
-    <div className="theme-toggle" aria-label="Interface theme">
-      <button className={theme === 'light' ? 'active' : ''} onClick={() => onChange('light')} aria-label="Light interface">
-        <Sun className="h-4 w-4" />
+    <div className="theme-toggle" role="group" aria-label="Interface theme">
+      <button
+        type="button"
+        className={theme === 'light' ? 'active' : ''}
+        onClick={() => onChange('light')}
+        aria-label="Light interface"
+        aria-pressed={theme === 'light'}
+      >
+        <Sun className="h-4 w-4" aria-hidden="true" focusable="false" />
       </button>
-      <button className={theme === 'dark' ? 'active' : ''} onClick={() => onChange('dark')} aria-label="Dark interface">
-        <Moon className="h-4 w-4" />
+      <button
+        type="button"
+        className={theme === 'dark' ? 'active' : ''}
+        onClick={() => onChange('dark')}
+        aria-label="Dark interface"
+        aria-pressed={theme === 'dark'}
+      >
+        <Moon className="h-4 w-4" aria-hidden="true" focusable="false" />
       </button>
     </div>
   );
@@ -103,14 +121,14 @@ function CommonsStatus({ syncState, onRefresh }) {
   const Icon = isLive ? Cloud : AlertTriangle;
 
   return (
-    <div className={`commons-status commons-status-${syncState.status}`}>
-      <Icon className="h-4 w-4" />
+    <div className={`commons-status commons-status-${syncState.status}`} role="status" aria-live="polite">
+      <Icon className="h-4 w-4" aria-hidden="true" focusable="false" />
       <div>
         <strong>{syncState.label}</strong>
         <span>{syncState.detail}</span>
       </div>
-      <button onClick={() => onRefresh({ force: true })} disabled={isSyncing} aria-label="Refresh Commons logos">
-        <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+      <button type="button" onClick={() => onRefresh({ force: true })} disabled={isSyncing} aria-label="Refresh Commons logos">
+        <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" focusable="false" />
       </button>
     </div>
   );
@@ -118,20 +136,26 @@ function CommonsStatus({ syncState, onRefresh }) {
 
 function LogoButton({ logo, active, disabled, onClick, accent = 'blue' }) {
   const isCommons = Boolean(logo.sha1 || logo.sourceUrl);
+  const action = active ? 'Remove' : 'Add';
+  const source = isCommons ? 'Loaded from Wikimedia Commons.' : 'Bundled or uploaded logo.';
+  const disabledReason = disabled ? ' This logo is already used as the central logo.' : '';
 
   return (
     <button
+      type="button"
       disabled={disabled}
       onClick={onClick}
       className={`logo-tile ${active ? `logo-tile-active logo-tile-${accent}` : ''} ${disabled ? 'logo-tile-disabled' : ''}`}
       title={logo.commonsPageTitle || logo.name}
+      aria-pressed={active}
+      aria-label={`${action} ${logo.name} in the surrounding ring. ${source}${disabledReason}`}
     >
       <LogoGlyph logo={logo} />
       <span>{logo.name}</span>
-      {isCommons && <i className="commons-mark" aria-label="Loaded from Wikimedia Commons" />}
+      {isCommons && <i className="commons-mark" aria-hidden="true" />}
       {active && (
-        <b>
-          <Check className="h-2.5 w-2.5" />
+        <b aria-hidden="true">
+          <Check className="h-2.5 w-2.5" aria-hidden="true" focusable="false" />
         </b>
       )}
     </button>
@@ -149,13 +173,13 @@ function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
         <LogoGlyph logo={selectedLogo} className="central-logo-glyph" />
         <div>
           <strong>{selectedLogo.name}</strong>
-          <span>{sourceLabel}</span>
+          <span id="central-logo-source">{sourceLabel}</span>
         </div>
       </div>
 
       <label className="central-logo-select">
         <span>Change central logo</span>
-        <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <select value={value} onChange={(event) => onChange(event.target.value)} aria-describedby="central-logo-source">
           {logos.map((logo) => (
             <option key={logo.id} value={logo.id}>
               {logo.name}
@@ -205,6 +229,11 @@ export default function App() {
   const effectiveRingScale = autoScaleLogos ? getAutoLogoScale(ringRadius, ringLogos.length) : manualLogoScale;
   const effectiveCenterScale = getCenterLogoScale(ringRadius, effectiveRingScale);
   const selectedCenterLogo = logoById.get(centerLogo) || allLogos[0];
+  const ringLogoNames = useMemo(
+    () => ringLogos.map((id) => logoById.get(id)?.name).filter(Boolean),
+    [logoById, ringLogos]
+  );
+  const canvasDescription = `${selectedCenterLogo?.name || 'Selected'} logo centered with ${ringLogoNames.length} surrounding logos: ${ringLogoNames.join(', ')}. ${showHalo ? `Halo enabled at ${Math.round(haloOpacity * 100)} percent intensity.` : 'Halo disabled.'}`;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -425,6 +454,9 @@ export default function App() {
 
   return (
     <div className={`app-shell theme-${theme}`}>
+      <a className="skip-link" href="#workspace-preview">
+        Skip to preview and export
+      </a>
       <header className="top-band">
         <div className="top-band-title">
           <h1>WikiRound Generator</h1>
@@ -437,13 +469,19 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        <aside className="sidebar control-scrollbar">
+        <aside className="sidebar control-scrollbar" aria-label="Logo wheel controls">
           <div className="sidebar-body">
-            <section className="control-section">
-              <SectionHeader accent="blue" icon={<Sliders className="h-4 w-4" />} title="1. Visual Presets" />
+            <section className="control-section" aria-labelledby="visual-presets-heading">
+              <SectionHeader id="visual-presets-heading" accent="blue" icon={<Sliders className="h-4 w-4" />} title="1. Visual Presets" />
               <div className="preset-grid">
                 {PRESETS.map((preset) => (
-                  <button key={preset.name} onClick={() => applyPreset(preset)} className="preset-button">
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className="preset-button"
+                    aria-label={`Apply ${preset.name} preset with ${preset.ring.length} surrounding logos`}
+                  >
                     <strong>{preset.name}</strong>
                     <span>
                       {preset.ring.length} ring items / Center: {preset.center}
@@ -453,18 +491,18 @@ export default function App() {
               </div>
             </section>
 
-            <section className="control-section">
-              <SectionHeader accent="red" title="2. Central Logo" meta={`ID: ${centerLogo}`} />
+            <section className="control-section" aria-labelledby="central-logo-heading">
+              <SectionHeader id="central-logo-heading" accent="red" title="2. Central Logo" meta={`ID: ${centerLogo}`} />
               <CentralLogoPicker logos={allLogos} selectedLogo={selectedCenterLogo} value={centerLogo} onChange={selectCenterLogo} />
             </section>
 
-            <section className="control-section">
-              <SectionHeader accent="green" title="3. Surround Ring Distribution" meta={`Active: ${ringLogos.length}`} />
-              <p className="section-note">
-                Current spacing <strong>{(360 / ringLogos.length).toFixed(1)} deg</strong>. Commons-backed logos are marked with a small blue source dot.
+            <section className="control-section" aria-labelledby="ring-distribution-heading">
+              <SectionHeader id="ring-distribution-heading" accent="green" title="3. Surround Ring Distribution" meta={`Active: ${ringLogos.length}`} />
+              <p className="section-note" id="ring-distribution-note">
+                Current spacing <strong>{(360 / ringLogos.length).toFixed(1)} degrees</strong>. The central logo is excluded from this ring.
               </p>
 
-              <div className="logo-grid">
+              <div className="logo-grid" role="group" aria-describedby="ring-distribution-note" aria-label="Surrounding logo selection">
                 {allLogos.map((logo) => {
                   const isActive = ringLogos.includes(logo.id);
                   const isCenterLogo = logo.id === centerLogo;
@@ -483,27 +521,32 @@ export default function App() {
               </div>
 
               {ringLogos.length > 1 && (
-                <div className="sequence-panel">
-                  <strong>Sequence Order Clockwise</strong>
-                  <div className="sequence-list control-scrollbar">
+                <div className="sequence-panel" aria-labelledby="sequence-heading">
+                  <strong id="sequence-heading">Sequence Order Clockwise</strong>
+                  <div className="sequence-list control-scrollbar" role="list" aria-live="polite">
                     {ringLogos.map((id, index) => {
                       const item = logoById.get(id);
                       if (!item) return null;
 
                       return (
-                        <div key={id} className="sequence-row">
+                        <div key={id} className="sequence-row" role="listitem">
                           <span>
                             {index + 1}. {item.name}
                           </span>
                           <div>
-                            <button disabled={index === 0} onClick={() => shiftRingItem(index, -1)} aria-label={`Move ${item.name} earlier`}>
-                              <ArrowUp className="h-3.5 w-3.5" />
+                            <button type="button" disabled={index === 0} onClick={() => shiftRingItem(index, -1)} aria-label={`Move ${item.name} earlier`}>
+                              <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
                             </button>
-                            <button disabled={index === ringLogos.length - 1} onClick={() => shiftRingItem(index, 1)} aria-label={`Move ${item.name} later`}>
-                              <ArrowDown className="h-3.5 w-3.5" />
+                            <button
+                              type="button"
+                              disabled={index === ringLogos.length - 1}
+                              onClick={() => shiftRingItem(index, 1)}
+                              aria-label={`Move ${item.name} later`}
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
                             </button>
-                            <button onClick={() => toggleRingItem(id)} aria-label={`Remove ${item.name}`}>
-                              <Trash2 className="h-3.5 w-3.5" />
+                            <button type="button" onClick={() => toggleRingItem(id)} aria-label={`Remove ${item.name}`}>
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
                             </button>
                           </div>
                         </div>
@@ -514,28 +557,32 @@ export default function App() {
               )}
             </section>
 
-            <section className="halo-panel">
+            <section className="halo-panel" aria-labelledby="halo-heading">
               <div className="panel-title-row">
                 <div>
-                  <Sparkles className="h-4 w-4" />
-                  <h3>Surround Halo</h3>
+                  <Sparkles className="h-4 w-4" aria-hidden="true" focusable="false" />
+                  <h3 id="halo-heading">Surround Halo</h3>
                 </div>
-                <ToggleSwitch checked={showHalo} onChange={setShowHalo} label="" />
+                <ToggleSwitch checked={showHalo} onChange={setShowHalo} label="Show surround halo" />
               </div>
 
               {showHalo && (
                 <div className="panel-controls">
                   <div>
-                    <label className="compact-label">Halo hue</label>
-                    <div className="color-row">
+                    <span className="compact-label" id="halo-color-heading">
+                      Halo hue
+                    </span>
+                    <div className="color-row" role="group" aria-labelledby="halo-color-heading">
                       {HALO_COLORS.map((color) => (
                         <button
                           key={color.hex}
+                          type="button"
                           onClick={() => setHaloColor(color.hex)}
                           style={{ backgroundColor: color.hex }}
                           className={haloColor === color.hex ? 'active' : ''}
                           title={color.name}
                           aria-label={color.name}
+                          aria-pressed={haloColor === color.hex}
                         />
                       ))}
                       <input type="color" value={haloColor} onChange={(event) => setHaloColor(event.target.value)} aria-label="Custom halo color" />
@@ -543,25 +590,54 @@ export default function App() {
                   </div>
 
                   <RangeControl label="Glow intensity" valueLabel={`${Math.round(haloOpacity * 100)}%`}>
-                    <input type="range" min="0.1" max="1" step="0.05" value={haloOpacity} onChange={(event) => setHaloOpacity(parseFloat(event.target.value))} />
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={haloOpacity}
+                      onChange={(event) => setHaloOpacity(parseFloat(event.target.value))}
+                      aria-valuetext={`${Math.round(haloOpacity * 100)} percent`}
+                    />
                   </RangeControl>
 
                   <RangeControl label="Outer glow boundary" valueLabel={`${haloRadius}px`}>
-                    <input type="range" min="100" max="400" value={haloRadius} onChange={(event) => setHaloRadius(parseInt(event.target.value, 10))} />
+                    <input
+                      type="range"
+                      min="100"
+                      max="400"
+                      value={haloRadius}
+                      onChange={(event) => setHaloRadius(parseInt(event.target.value, 10))}
+                      aria-valuetext={`${haloRadius} pixels`}
+                    />
                   </RangeControl>
                 </div>
               )}
             </section>
 
-            <section className="control-section">
-              <SectionHeader accent="amber" icon={<Sliders className="h-4 w-4" />} title="4. Layout Dimensions" />
+            <section className="control-section" aria-labelledby="layout-heading">
+              <SectionHeader id="layout-heading" accent="amber" icon={<Sliders className="h-4 w-4" />} title="4. Layout Dimensions" />
 
               <RangeControl label="Ring spread radius" valueLabel={`${ringRadius}px`}>
-                <input type="range" min="100" max="300" value={ringRadius} onChange={(event) => setRingRadius(parseInt(event.target.value, 10))} />
+                <input
+                  type="range"
+                  min="100"
+                  max="300"
+                  value={ringRadius}
+                  onChange={(event) => setRingRadius(parseInt(event.target.value, 10))}
+                  aria-valuetext={`${ringRadius} pixels`}
+                />
               </RangeControl>
 
-              <RangeControl label="Ring angle rotation" valueLabel={`${ringRotation} deg`}>
-                <input type="range" min="0" max="360" value={ringRotation} onChange={(event) => setRingRotation(parseInt(event.target.value, 10))} />
+              <RangeControl label="Ring angle rotation" valueLabel={`${ringRotation} degrees`}>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  value={ringRotation}
+                  onChange={(event) => setRingRotation(parseInt(event.target.value, 10))}
+                  aria-valuetext={`${ringRotation} degrees`}
+                />
               </RangeControl>
 
               <div className="alignment-row">
@@ -569,7 +645,7 @@ export default function App() {
                   <strong>Center side anchors</strong>
                   <span>Align the strongest lateral ring position with the center logo.</span>
                 </div>
-                <ToggleSwitch checked={centerLateralAnchors} onChange={setCenterLateralAnchors} label="" />
+                <ToggleSwitch checked={centerLateralAnchors} onChange={setCenterLateralAnchors} label="Center side anchors" />
               </div>
 
               <div className="alignment-row">
@@ -577,7 +653,7 @@ export default function App() {
                   <strong>Auto scale logo size</strong>
                   <span>Fit the current logo count and ring radius without collisions.</span>
                 </div>
-                <ToggleSwitch checked={autoScaleLogos} onChange={setAutoScaleLogos} label="" />
+                <ToggleSwitch checked={autoScaleLogos} onChange={setAutoScaleLogos} label="Auto scale logo size" />
               </div>
 
               {autoScaleLogos ? (
@@ -596,52 +672,65 @@ export default function App() {
                     step="0.01"
                     value={manualLogoScale}
                     onChange={(event) => setRingScale(parseFloat(event.target.value))}
+                    aria-valuetext={`Scale ${manualLogoScale.toFixed(2)}, maximum ${collisionSafeLogoScale.toFixed(2)}`}
                   />
                 </RangeControl>
               )}
             </section>
 
-            <section className="upload-panel">
-              <h3>
-                <Upload className="h-3.5 w-3.5" />
+            <section className="upload-panel" aria-labelledby="upload-heading">
+              <h3 id="upload-heading">
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
                 Upload Custom Logo
               </h3>
               <p>SVG, PNG, or JPG files become local-only custom nodes.</p>
               <label>
-                <ImageIcon className="h-8 w-8" />
+                <ImageIcon className="h-8 w-8" aria-hidden="true" focusable="false" />
                 <span>Click to select file</span>
                 <small>SVG vector formats recommended</small>
                 <input type="file" accept=".svg,image/png,image/jpeg" onChange={handleUpload} />
               </label>
-              {uploadError && <p className="error-text">{uploadError}</p>}
+              {uploadError && (
+                <p className="error-text" role="alert">
+                  {uploadError}
+                </p>
+              )}
             </section>
           </div>
         </aside>
 
-        <main className="workspace">
+        <main className="workspace" id="workspace-preview" aria-label="Logo wheel preview and export">
           <div className="workspace-toolbar">
-            <div className="backdrop-controls">
-              <span>Backdrop</span>
+            <div className="backdrop-controls" role="group" aria-labelledby="backdrop-heading">
+              <span id="backdrop-heading">Backdrop</span>
               <div>
                 {BACKDROP_THEMES.map((backdropTheme) => (
-                  <button key={backdropTheme.id} onClick={() => setBackdrop(backdropTheme.id)} className={backdrop === backdropTheme.id ? 'active' : ''}>
+                  <button
+                    key={backdropTheme.id}
+                    type="button"
+                    onClick={() => setBackdrop(backdropTheme.id)}
+                    className={backdrop === backdropTheme.id ? 'active' : ''}
+                    aria-pressed={backdrop === backdropTheme.id}
+                  >
                     {backdropTheme.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <ToggleSwitch checked={showGuides} onChange={setShowGuides} label="Guides" />
+            <ToggleSwitch checked={showGuides} onChange={setShowGuides} label="Display guides" showLabel />
           </div>
 
           <div className="canvas-stage">
             <div className="canvas-frame">
               <div className={backdrop === 'transparent' ? 'bg-checkerboard canvas-backdrop' : 'canvas-backdrop'} />
-              <canvas ref={canvasRef} />
+              <canvas ref={canvasRef} role="img" aria-label={canvasDescription}>
+                {canvasDescription}
+              </canvas>
 
               {isRendering && (
-                <div className="render-overlay">
-                  <RefreshCw className="h-8 w-8 animate-spin" />
+                <div className="render-overlay" role="status" aria-live="polite">
+                  <RefreshCw className="h-8 w-8 animate-spin" aria-hidden="true" focusable="false" />
                   <span>Drawing canvas...</span>
                 </div>
               )}
@@ -663,13 +752,13 @@ export default function App() {
             </div>
 
             <div>
-              <button onClick={downloadPNG} className="secondary-action">
-                <ImageIcon className="h-4 w-4" />
+              <button type="button" onClick={downloadPNG} className="secondary-action">
+                <ImageIcon className="h-4 w-4" aria-hidden="true" focusable="false" />
                 <span>Download PNG</span>
               </button>
 
-              <button onClick={downloadSVG} className="primary-action">
-                <Download className="h-4 w-4" />
+              <button type="button" onClick={downloadSVG} className="primary-action">
+                <Download className="h-4 w-4" aria-hidden="true" focusable="false" />
                 <span>Download SVG</span>
               </button>
             </div>
