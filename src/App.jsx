@@ -29,7 +29,7 @@ import { drawWheel, useWheelCanvas } from './hooks/useWheelCanvas.js';
 import { buildAttribution } from './utils/attribution.js';
 import { commonsFilePageUrl } from './utils/commons.js';
 import { parseImportedPresets, serializeCustomPresets } from './utils/customPresets.js';
-import { DEFAULT_CONFIG, readConfigFromLocation, sanitizeConfig } from './utils/designConfig.js';
+import { normalizeConfig, readConfigFromLocation } from './utils/designConfig.js';
 import { copyCanvasToClipboard, downloadBlob, downloadCanvasImage } from './utils/download.js';
 import {
   MIN_LOGO_SCALE,
@@ -423,7 +423,7 @@ function SequenceList({ ringLogos, logoById, onMove, onShift, onRemove }) {
 
 export default function App() {
   // Seed editor state from the shared URL hash once, falling back to defaults.
-  const initialConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...readConfigFromLocation() }), []);
+  const initialConfig = useMemo(() => normalizeConfig(readConfigFromLocation()), []);
 
   const [theme, setTheme] = useTheme();
   const { remoteLogos, syncState, refreshCommons } = useCommonsLogoSync(DEFAULT_LOGOS);
@@ -544,7 +544,7 @@ export default function App() {
   // Apply a complete saved/imported config (custom presets). Built-in presets use
   // applyPreset below, which intentionally leaves unspecified fields untouched.
   function applyConfig(config) {
-    const merged = { ...DEFAULT_CONFIG, ...sanitizeConfig(config) };
+    const merged = normalizeConfig(config);
     setCenterLogo(merged.centerLogo);
     setRingLogos(merged.ringLogos);
     setShowHalo(merged.showHalo);
@@ -648,14 +648,10 @@ export default function App() {
   function toggleRingItem(id) {
     if (id === centerLogo) return;
 
-    if (ringLogos.includes(id)) {
-      if (ringLogos.length > 1) {
-        setRingLogos((current) => current.filter((itemId) => itemId !== id));
-      }
-      return;
-    }
-
-    setRingLogos((current) => [...current, id]);
+    setRingLogos((current) => {
+      if (!current.includes(id)) return [...current, id];
+      return current.length > 1 ? current.filter((itemId) => itemId !== id) : current;
+    });
   }
 
   function shiftRingItem(index, direction) {
@@ -684,20 +680,28 @@ export default function App() {
 
   // Resolve the chosen export background to a fill. "Match preview" follows the
   // current backdrop; JPG has no alpha, so a transparent choice falls back to white.
+  function resolveExportBackdrop() {
+    return exportBackground === 'preview' ? backdrop : exportBackground;
+  }
+
   function resolveExportFill(forJpg) {
-    const fill = exportBackground === 'preview' ? backdropFill : getBackdropFill(exportBackground);
+    const fill = getBackdropFill(resolveExportBackdrop());
     return forJpg && !fill ? '#ffffff' : fill;
   }
 
   function buildExportCanvas(forJpg) {
     const canvas = document.createElement('canvas');
-    drawWheel(canvas, exportSize, { ...wheelSettings, backdropFill: resolveExportFill(forJpg) });
+    drawWheel(canvas, exportSize, {
+      ...wheelSettings,
+      backdrop: resolveExportBackdrop(),
+      backdropFill: resolveExportFill(forJpg)
+    });
     return canvas;
   }
 
   function generateVectorSvg() {
     return generateWheelSvg({
-      backdrop: exportBackground === 'preview' ? backdrop : exportBackground,
+      backdrop: resolveExportBackdrop(),
       backdropFill: resolveExportFill(false),
       centerLateralAnchors,
       centerLogo,

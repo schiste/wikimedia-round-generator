@@ -1,20 +1,20 @@
-import { sanitizeConfig } from './designConfig.js';
+import { normalizeConfig, sanitizeConfig } from './designConfig.js';
 
 const STORAGE_VERSION = 1;
 const STORAGE_KEY = `wikiround.customPresets.v${STORAGE_VERSION}`;
 
 // A custom preset is { id, name, config } where config is a full design config.
-// sanitizeConfig keeps only valid fields; unknown logo ids degrade gracefully at
-// render time, so we only require a center logo and a ring list to be present.
+// Field validation happens first; normalizeConfig then enforces cross-field
+// invariants such as keeping the center logo out of the surrounding ring.
 function normalizePreset(entry) {
   if (!entry || typeof entry !== 'object') return null;
 
   const name = typeof entry.name === 'string' ? entry.name.trim() : '';
-  const config = sanitizeConfig(entry.config);
-  if (!name || !config.centerLogo || !Array.isArray(config.ringLogos)) return null;
+  const sanitizedConfig = sanitizeConfig(entry.config);
+  if (!name || !sanitizedConfig.centerLogo || !Array.isArray(sanitizedConfig.ringLogos)) return null;
 
   const id = typeof entry.id === 'string' && entry.id ? entry.id : createPresetId();
-  return { id, name, config };
+  return { id, name, config: normalizeConfig(sanitizedConfig) };
 }
 
 export function createPresetId() {

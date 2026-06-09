@@ -83,6 +83,21 @@ export function sanitizeConfig(raw) {
   return config;
 }
 
+function normalizeRingLogos(ringLogos, centerLogo, fallbackRingLogos) {
+  const uniqueRingLogos = [...new Set(ringLogos)].filter((id) => id && id !== centerLogo);
+  if (uniqueRingLogos.length > 0) return uniqueRingLogos;
+
+  return fallbackRingLogos.filter((id) => id !== centerLogo);
+}
+
+export function normalizeConfig(raw) {
+  const config = { ...DEFAULT_CONFIG, ...sanitizeConfig(raw) };
+  return {
+    ...config,
+    ringLogos: normalizeRingLogos(config.ringLogos, config.centerLogo, DEFAULT_CONFIG.ringLogos)
+  };
+}
+
 export function encodeConfigToHash(config) {
   const params = new URLSearchParams();
   for (const field of FIELDS) {
