@@ -2,7 +2,7 @@ import { sanitizeSvgMarkup } from '../utils/svg.js';
 import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
 import { indexById } from '../utils/collection.js';
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_KEY = `wikiround.commonsLogos.v${CACHE_VERSION}`;
 const CACHE_TTL_MS = COMMONS_CACHE_TTL_MS;
 

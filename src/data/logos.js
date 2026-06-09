@@ -2,12 +2,17 @@ export const DEFAULT_LOGOS = [
   {
     id: 'wikimedia',
     name: 'Wikimedia',
-    commonsTitle: 'File:Wikimedia-logo.svg',
-    color: '#3366cc',
-    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="52" r="14" fill="#d32f2f"/>
-      <path d="M15,50 A35,35 0 0,0 85,50" fill="none" stroke="#3f51b5" stroke-width="12" stroke-linecap="round"/>
-      <path d="M30,28 A25,25 0 0,1 70,28" fill="none" stroke="#4caf50" stroke-width="10" stroke-linecap="round"/>
+    commonsTitle: 'File:Wikimedia-logo black.svg',
+    color: '#000000',
+    svg: `<svg viewBox="-16 -16 32 32" xmlns="http://www.w3.org/2000/svg">
+      <clipPath id="wikimedia-fallback-mark">
+        <path d="m1-2v12h-2v-12l-15-15v33h32v-33z"/>
+      </clipPath>
+      <g clip-path="url(#wikimedia-fallback-mark)">
+        <circle r="9" fill="#000000"/>
+        <circle fill="none" r="13" stroke="#000000" stroke-width="4"/>
+      </g>
+      <circle cy="-10" r="5" fill="#000000"/>
     </svg>`
   },
   {
