@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDown,
@@ -7,6 +7,7 @@ import {
   Cloud,
   Copy,
   Download,
+  GripVertical,
   Image as ImageIcon,
   Moon,
   RefreshCw,
@@ -270,6 +271,99 @@ function CustomPresetPanel({ presets, onSave, onApply, onDelete, onExport, onImp
   );
 }
 
+function SequenceList({ ringLogos, logoById, onMove, onShift, onRemove }) {
+  const listRef = useRef(null);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+
+  // Pointer-based reordering works for both mouse and touch. The visible row whose
+  // vertical midpoint sits below the pointer becomes the drop target.
+  function indexFromPoint(clientY) {
+    const container = listRef.current;
+    if (!container) return null;
+
+    const rows = [...container.querySelectorAll('[data-seq-row]')];
+    for (let index = 0; index < rows.length; index += 1) {
+      const rect = rows[index].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return index;
+    }
+    return rows.length - 1;
+  }
+
+  function handlePointerDown(event, index) {
+    event.preventDefault();
+    setDragIndex(index);
+    setOverIndex(index);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handlePointerMove(event) {
+    if (dragIndex === null) return;
+    const target = indexFromPoint(event.clientY);
+    if (target !== null) setOverIndex(target);
+  }
+
+  function handlePointerUp() {
+    if (dragIndex !== null && overIndex !== null && dragIndex !== overIndex) {
+      onMove(dragIndex, overIndex);
+    }
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
+  return (
+    <div className="sequence-list control-scrollbar" role="list" aria-live="polite" ref={listRef}>
+      {ringLogos.map((id, index) => {
+        const item = logoById.get(id);
+        if (!item) return null;
+
+        const isDragging = index === dragIndex;
+        const isOver = dragIndex !== null && index === overIndex && index !== dragIndex;
+
+        return (
+          <div
+            key={id}
+            data-seq-row=""
+            className={`sequence-row${isDragging ? ' sequence-row-dragging' : ''}${isOver ? ' sequence-row-over' : ''}`}
+            role="listitem"
+          >
+            <button
+              type="button"
+              className="sequence-drag-handle"
+              aria-label={`Drag to reorder ${item.name}`}
+              onPointerDown={(event) => handlePointerDown(event, index)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+            >
+              <GripVertical className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+            </button>
+            <span>
+              {index + 1}. {item.name}
+            </span>
+            <div>
+              <button type="button" disabled={index === 0} onClick={() => onShift(index, -1)} aria-label={`Move ${item.name} earlier`}>
+                <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+              </button>
+              <button
+                type="button"
+                disabled={index === ringLogos.length - 1}
+                onClick={() => onShift(index, 1)}
+                aria-label={`Move ${item.name} later`}
+              >
+                <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+              </button>
+              <button type="button" onClick={() => onRemove(id)} aria-label={`Remove ${item.name}`}>
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function App() {
   // Seed editor state from the shared URL hash once, falling back to defaults.
   const initialConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...readConfigFromLocation() }), []);
@@ -516,6 +610,16 @@ export default function App() {
     });
   }
 
+  function moveRingItem(from, to) {
+    setRingLogos((current) => {
+      if (from === to || to < 0 || to >= current.length) return current;
+      const updated = [...current];
+      const [moved] = updated.splice(from, 1);
+      updated.splice(to, 0, moved);
+      return updated;
+    });
+  }
+
   // Resolve the chosen export background to a fill. "Match preview" follows the
   // current backdrop; JPG has no alpha, so a transparent choice falls back to white.
   function resolveExportFill(forJpg) {
@@ -665,36 +769,8 @@ export default function App() {
               {ringLogos.length > 1 && (
                 <div className="sequence-panel" aria-labelledby="sequence-heading">
                   <strong id="sequence-heading">Sequence Order Clockwise</strong>
-                  <div className="sequence-list control-scrollbar" role="list" aria-live="polite">
-                    {ringLogos.map((id, index) => {
-                      const item = logoById.get(id);
-                      if (!item) return null;
-
-                      return (
-                        <div key={id} className="sequence-row" role="listitem">
-                          <span>
-                            {index + 1}. {item.name}
-                          </span>
-                          <div>
-                            <button type="button" disabled={index === 0} onClick={() => shiftRingItem(index, -1)} aria-label={`Move ${item.name} earlier`}>
-                              <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={index === ringLogos.length - 1}
-                              onClick={() => shiftRingItem(index, 1)}
-                              aria-label={`Move ${item.name} later`}
-                            >
-                              <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-                            </button>
-                            <button type="button" onClick={() => toggleRingItem(id)} aria-label={`Remove ${item.name}`}>
-                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <p className="section-note">Drag the handle to reorder, or use the arrow buttons.</p>
+                  <SequenceList ringLogos={ringLogos} logoById={logoById} onMove={moveRingItem} onShift={shiftRingItem} onRemove={toggleRingItem} />
                 </div>
               )}
             </section>
