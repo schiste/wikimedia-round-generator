@@ -173,8 +173,9 @@ app.get('/api/healthz', (req, res) => {
 
 app.get('/api/logos', async (req, res) => {
   try {
-    const payload = await getResolvedCommonsLogos({ force: req.query.refresh === '1' });
-    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+    const forceRefresh = req.query.refresh === '1';
+    const payload = await getResolvedCommonsLogos({ force: forceRefresh });
+    res.set('Cache-Control', forceRefresh ? 'no-store' : 'public, max-age=300, stale-while-revalidate=3600');
     res.json({
       source: payload.source,
       fetchedAt: new Date(payload.fetchedAt).toISOString(),
