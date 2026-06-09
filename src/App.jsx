@@ -17,10 +17,12 @@ import {
 } from 'lucide-react';
 import { BACKDROP_THEMES, DEFAULT_LOGOS, HALO_COLORS, PRESETS, getBackdropFill } from './data/logos.js';
 import { useCommonsLogoSync } from './hooks/useCommonsLogoSync.js';
+import { useDesignUrlSync } from './hooks/useDesignUrlSync.js';
 import { useLogoCatalog } from './hooks/useLogoCatalog.js';
 import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
 import { useWheelCanvas } from './hooks/useWheelCanvas.js';
+import { DEFAULT_CONFIG, readConfigFromLocation, sanitizeConfig } from './utils/designConfig.js';
 import { downloadBlob, downloadCanvasPng } from './utils/download.js';
 import {
   MIN_LOGO_SCALE,
@@ -30,8 +32,6 @@ import {
 } from './utils/layout.js';
 import { sanitizeSvgMarkup } from './utils/svg.js';
 import { generateWheelSvg } from './utils/wheelSvg.js';
-
-const INITIAL_RING_LOGOS = PRESETS[0].ring;
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
   return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
@@ -180,6 +180,9 @@ function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
 }
 
 export default function App() {
+  // Seed editor state from the shared URL hash once, falling back to defaults.
+  const initialConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...readConfigFromLocation() }), []);
+
   const [theme, setTheme] = useTheme();
   const { remoteLogos, syncState, refreshCommons } = useCommonsLogoSync(DEFAULT_LOGOS);
   const [customLogos, setCustomLogos] = useState([]);
@@ -189,22 +192,22 @@ export default function App() {
     customLogos
   });
 
-  const [centerLogo, setCenterLogo] = useState('wikimedia');
-  const [ringLogos, setRingLogos] = useState(INITIAL_RING_LOGOS);
+  const [centerLogo, setCenterLogo] = useState(initialConfig.centerLogo);
+  const [ringLogos, setRingLogos] = useState(initialConfig.ringLogos);
 
-  const [showHalo, setShowHalo] = useState(true);
-  const [haloColor, setHaloColor] = useState('#0e65c0');
-  const [haloOpacity, setHaloOpacity] = useState(0.2);
-  const [haloRadius, setHaloRadius] = useState(260);
+  const [showHalo, setShowHalo] = useState(initialConfig.showHalo);
+  const [haloColor, setHaloColor] = useState(initialConfig.haloColor);
+  const [haloOpacity, setHaloOpacity] = useState(initialConfig.haloOpacity);
+  const [haloRadius, setHaloRadius] = useState(initialConfig.haloRadius);
 
-  const [ringRadius, setRingRadius] = useState(210);
-  const [ringRotation, setRingRotation] = useState(0);
-  const [centerLateralAnchors, setCenterLateralAnchors] = useState(true);
-  const [autoScaleLogos, setAutoScaleLogos] = useState(true);
-  const [ringScale, setRingScale] = useState(0.75);
+  const [ringRadius, setRingRadius] = useState(initialConfig.ringRadius);
+  const [ringRotation, setRingRotation] = useState(initialConfig.ringRotation);
+  const [centerLateralAnchors, setCenterLateralAnchors] = useState(initialConfig.centerLateralAnchors);
+  const [autoScaleLogos, setAutoScaleLogos] = useState(initialConfig.autoScaleLogos);
+  const [ringScale, setRingScale] = useState(initialConfig.ringScale);
 
-  const [showGuides, setShowGuides] = useState(false);
-  const [backdrop, setBackdrop] = useState('transparent');
+  const [showGuides, setShowGuides] = useState(initialConfig.showGuides);
+  const [backdrop, setBackdrop] = useState(initialConfig.backdrop);
   const [uploadError, setUploadError] = useState('');
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
@@ -237,6 +240,61 @@ export default function App() {
     showGuides,
     showHalo
   });
+
+  // Full editable design, shared by URL sync (#2) and saved presets (#3).
+  const designConfig = useMemo(
+    () => ({
+      centerLogo,
+      ringLogos,
+      showHalo,
+      haloColor,
+      haloOpacity,
+      haloRadius,
+      ringRadius,
+      ringRotation,
+      centerLateralAnchors,
+      autoScaleLogos,
+      ringScale,
+      showGuides,
+      backdrop
+    }),
+    [
+      centerLogo,
+      ringLogos,
+      showHalo,
+      haloColor,
+      haloOpacity,
+      haloRadius,
+      ringRadius,
+      ringRotation,
+      centerLateralAnchors,
+      autoScaleLogos,
+      ringScale,
+      showGuides,
+      backdrop
+    ]
+  );
+
+  useDesignUrlSync(designConfig);
+
+  // Apply a complete saved/imported config (custom presets). Built-in presets use
+  // applyPreset below, which intentionally leaves unspecified fields untouched.
+  function applyConfig(config) {
+    const merged = { ...DEFAULT_CONFIG, ...sanitizeConfig(config) };
+    setCenterLogo(merged.centerLogo);
+    setRingLogos(merged.ringLogos);
+    setShowHalo(merged.showHalo);
+    setHaloColor(merged.haloColor);
+    setHaloOpacity(merged.haloOpacity);
+    setHaloRadius(merged.haloRadius);
+    setRingRadius(merged.ringRadius);
+    setRingRotation(merged.ringRotation);
+    setCenterLateralAnchors(merged.centerLateralAnchors);
+    setAutoScaleLogos(merged.autoScaleLogos);
+    setRingScale(merged.ringScale);
+    setShowGuides(merged.showGuides);
+    setBackdrop(merged.backdrop);
+  }
 
   function applyPreset(preset) {
     setCenterLogo(preset.center);
