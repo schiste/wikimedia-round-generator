@@ -38,3 +38,15 @@ export function getPageForLogo(apiResponse, logo) {
 function normalizeCommonsTitle(title) {
   return title.replaceAll('_', ' ');
 }
+
+const COMMONS_FILE_BASE = 'https://commons.wikimedia.org/wiki/';
+
+// Best-available link to a logo's Commons file page (the source of truth for its
+// current revision, author, and license).
+export function commonsFilePageUrl(logo) {
+  if (!logo) return null;
+  if (logo.descriptionUrl) return logo.descriptionUrl;
+
+  const title = logo.commonsPageTitle || logo.commonsTitle;
+  return title ? `${COMMONS_FILE_BASE}${encodeURI(title.replaceAll(' ', '_'))}` : null;
+}

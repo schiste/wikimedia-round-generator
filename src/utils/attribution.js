@@ -1,13 +1,4 @@
-const COMMONS_FILE_BASE = 'https://commons.wikimedia.org/wiki/';
-
-function commonsFilePageUrl(logo) {
-  if (logo.descriptionUrl) return logo.descriptionUrl;
-
-  const title = logo.commonsPageTitle || logo.commonsTitle;
-  if (title) return `${COMMONS_FILE_BASE}${encodeURI(title.replaceAll(' ', '_'))}`;
-
-  return null;
-}
+import { commonsFilePageUrl } from './commons.js';
 
 // Builds plain-text attribution for the logos used in a design. Commons-backed
 // logos link to their file page (the authoritative source for author + license);
