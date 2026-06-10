@@ -33,6 +33,7 @@ import { copyCanvasToClipboard, downloadBlob, downloadCanvasImage } from './util
 import {
   MIN_LOGO_SCALE,
   getAutoLogoScale,
+  getCenterCollisionSafeScale,
   getCenterLogoScale,
   getCollisionSafeLogoScale
 } from './utils/layout.js';
@@ -402,6 +403,7 @@ export default function App() {
   const [centerLateralAnchors, setCenterLateralAnchors] = useState(initialConfig.centerLateralAnchors);
   const [autoScaleLogos, setAutoScaleLogos] = useState(initialConfig.autoScaleLogos);
   const [ringScale, setRingScale] = useState(initialConfig.ringScale);
+  const [centerScale, setCenterScale] = useState(initialConfig.centerScale);
 
   const [showGuides, setShowGuides] = useState(initialConfig.showGuides);
   const [backdrop, setBackdrop] = useState(initialConfig.backdrop);
@@ -417,7 +419,9 @@ export default function App() {
   const collisionSafeLogoScale = useMemo(() => getCollisionSafeLogoScale(ringRadius, ringLogos.length), [ringRadius, ringLogos.length]);
   const manualLogoScale = Math.min(ringScale, collisionSafeLogoScale);
   const effectiveRingScale = autoScaleLogos ? getAutoLogoScale(ringRadius, ringLogos.length) : manualLogoScale;
-  const effectiveCenterScale = getCenterLogoScale(ringRadius, effectiveRingScale);
+  const centerCollisionSafeScale = getCenterCollisionSafeScale(ringRadius, effectiveRingScale);
+  const manualCenterScale = Math.min(centerScale, centerCollisionSafeScale);
+  const effectiveCenterScale = autoScaleLogos ? getCenterLogoScale(ringRadius, effectiveRingScale) : manualCenterScale;
   const selectedCenterLogo = logoById.get(centerLogo) || allLogos[0];
   const ringLogoNames = useMemo(
     () => ringLogos.map((id) => logoById.get(id)?.name).filter(Boolean),
@@ -474,6 +478,7 @@ export default function App() {
       centerLateralAnchors,
       autoScaleLogos,
       ringScale,
+      centerScale,
       showGuides,
       backdrop
     }),
@@ -489,6 +494,7 @@ export default function App() {
       centerLateralAnchors,
       autoScaleLogos,
       ringScale,
+      centerScale,
       showGuides,
       backdrop
     ]
@@ -511,8 +517,19 @@ export default function App() {
     setCenterLateralAnchors(merged.centerLateralAnchors);
     setAutoScaleLogos(merged.autoScaleLogos);
     setRingScale(merged.ringScale);
+    setCenterScale(merged.centerScale);
     setShowGuides(merged.showGuides);
     setBackdrop(merged.backdrop);
+  }
+
+  // Seed manual sizes from the current auto values when leaving auto mode, so the
+  // sliders start where the design already looks instead of jumping.
+  function handleAutoScaleChange(next) {
+    if (!next) {
+      setRingScale(effectiveRingScale);
+      setCenterScale(effectiveCenterScale);
+    }
+    setAutoScaleLogos(next);
   }
 
   function exportPresets() {
@@ -909,7 +926,7 @@ export default function App() {
                   <strong>Auto scale logo size</strong>
                   <span>Fit the current logo count and ring radius without collisions.</span>
                 </div>
-                <ToggleSwitch checked={autoScaleLogos} onChange={setAutoScaleLogos} label="Auto scale logo size" />
+                <ToggleSwitch checked={autoScaleLogos} onChange={handleAutoScaleChange} label="Auto scale logo size" />
               </div>
 
               {autoScaleLogos ? (
@@ -920,17 +937,31 @@ export default function App() {
                   </strong>
                 </div>
               ) : (
-                <RangeControl label="Logo size" valueLabel={`x${manualLogoScale.toFixed(2)} / max x${collisionSafeLogoScale.toFixed(2)}`}>
-                  <input
-                    type="range"
-                    min={MIN_LOGO_SCALE}
-                    max={collisionSafeLogoScale}
-                    step="0.01"
-                    value={manualLogoScale}
-                    onChange={(event) => setRingScale(parseFloat(event.target.value))}
-                    aria-valuetext={`Scale ${manualLogoScale.toFixed(2)}, maximum ${collisionSafeLogoScale.toFixed(2)}`}
-                  />
-                </RangeControl>
+                <>
+                  <RangeControl label="Ring logo size" valueLabel={`x${manualLogoScale.toFixed(2)} / max x${collisionSafeLogoScale.toFixed(2)}`}>
+                    <input
+                      type="range"
+                      min={MIN_LOGO_SCALE}
+                      max={collisionSafeLogoScale}
+                      step="0.01"
+                      value={manualLogoScale}
+                      onChange={(event) => setRingScale(parseFloat(event.target.value))}
+                      aria-valuetext={`Ring logo scale ${manualLogoScale.toFixed(2)}, maximum ${collisionSafeLogoScale.toFixed(2)}`}
+                    />
+                  </RangeControl>
+
+                  <RangeControl label="Center logo size" valueLabel={`x${manualCenterScale.toFixed(2)} / max x${centerCollisionSafeScale.toFixed(2)}`}>
+                    <input
+                      type="range"
+                      min={MIN_LOGO_SCALE}
+                      max={centerCollisionSafeScale}
+                      step="0.01"
+                      value={manualCenterScale}
+                      onChange={(event) => setCenterScale(parseFloat(event.target.value))}
+                      aria-valuetext={`Center logo scale ${manualCenterScale.toFixed(2)}, maximum ${centerCollisionSafeScale.toFixed(2)}`}
+                    />
+                  </RangeControl>
+                </>
               )}
             </section>
 

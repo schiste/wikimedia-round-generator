@@ -1,5 +1,5 @@
 import { BACKDROP_THEMES, PRESETS } from '../data/logos.js';
-import { MAX_LOGO_SCALE, MIN_LOGO_SCALE, clamp } from './layout.js';
+import { MAX_CENTER_LOGO_SCALE, MAX_LOGO_SCALE, MIN_LOGO_SCALE, clamp } from './layout.js';
 
 // Canonical shape of an editable wheel design. Shared by the live editor state,
 // shareable URLs (#2), and saved presets (#3) so all three agree on one schema.
@@ -15,6 +15,7 @@ export const DEFAULT_CONFIG = {
   centerLateralAnchors: true,
   autoScaleLogos: true,
   ringScale: 0.75,
+  centerScale: 1,
   showGuides: false,
   backdrop: 'transparent'
 };
@@ -33,6 +34,7 @@ const FIELDS = [
   { key: 'centerLateralAnchors', param: 'anchor', type: 'bool' },
   { key: 'autoScaleLogos', param: 'auto', type: 'bool' },
   { key: 'ringScale', param: 'rs', type: 'number', min: MIN_LOGO_SCALE, max: MAX_LOGO_SCALE },
+  { key: 'centerScale', param: 'cs', type: 'number', min: MIN_LOGO_SCALE, max: MAX_CENTER_LOGO_SCALE },
   { key: 'showGuides', param: 'guides', type: 'bool' },
   { key: 'backdrop', param: 'bg', type: 'enum', values: BACKDROP_THEMES.map((theme) => theme.id) }
 ];

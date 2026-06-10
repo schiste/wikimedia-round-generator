@@ -74,7 +74,14 @@ export function getAutoLogoScale(ringRadius, ringCount) {
   return clamp(Math.min(collisionSafeScale * 0.94, getDensityScaleCap(ringCount)), MIN_LOGO_SCALE, collisionSafeScale);
 }
 
-export function getCenterLogoScale(ringRadius, ringScale) {
+// Largest the center logo can grow, for a given ring logo size, before it would
+// touch the ring logos — the safe ceiling for an independent center-scale control.
+export function getCenterCollisionSafeScale(ringRadius, ringScale) {
   const centerLimit = usableDiameter(ringRadius) / LOGO_VIEWBOX_SIZE - ringScale;
-  return clamp(ringScale * CENTER_LOGO_SCALE_RATIO, MIN_LOGO_SCALE, Math.min(MAX_CENTER_LOGO_SCALE, centerLimit));
+  return clamp(Math.min(MAX_CENTER_LOGO_SCALE, centerLimit), MIN_LOGO_SCALE, MAX_CENTER_LOGO_SCALE);
+}
+
+// Auto center scale: proportional to the ring scale, bounded by the safe ceiling.
+export function getCenterLogoScale(ringRadius, ringScale) {
+  return clamp(ringScale * CENTER_LOGO_SCALE_RATIO, MIN_LOGO_SCALE, getCenterCollisionSafeScale(ringRadius, ringScale));
 }
