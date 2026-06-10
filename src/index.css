@@ -701,6 +701,30 @@ a:focus-visible {
   cursor: pointer;
 }
 
+/* Inline label + control row (e.g. Backdrop selector). */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.field-row > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.field-row select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--text);
+  padding: 7px 10px;
+}
+
 .alignment-row {
   display: flex;
   align-items: center;
@@ -884,53 +908,6 @@ a:focus-visible {
   background: var(--app-bg);
 }
 
-.workspace-toolbar {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  padding: 12px 24px;
-}
-
-.backdrop-controls {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 14px;
-}
-
-.backdrop-controls > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 760;
-  text-transform: uppercase;
-}
-
-.backdrop-controls > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.backdrop-controls button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  padding: 6px 11px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.backdrop-controls button.active {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-  background: var(--accent-soft);
-  color: var(--accent);
-}
 
 .canvas-stage {
   position: relative;
@@ -1478,25 +1455,6 @@ a:focus-visible {
 
   .preset-picker {
     display: block;
-  }
-
-  .workspace-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 16px;
-  }
-
-  .backdrop-controls {
-    width: 100%;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 9px;
-  }
-
-  .backdrop-controls > div {
-    width: 100%;
-    flex-wrap: wrap;
   }
 
   .canvas-metadata {

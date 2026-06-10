@@ -934,6 +934,29 @@ export default function App() {
               )}
             </section>
 
+            <section className="control-section" aria-labelledby="display-heading">
+              <SectionHeader id="display-heading" accent="blue" icon={<Sliders className="h-4 w-4" />} title="5. Display" />
+
+              <label className="field-row">
+                <span>Backdrop</span>
+                <select value={backdrop} onChange={(event) => setBackdrop(event.target.value)} aria-label="Canvas backdrop">
+                  {BACKDROP_THEMES.map((backdropTheme) => (
+                    <option key={backdropTheme.id} value={backdropTheme.id}>
+                      {backdropTheme.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="alignment-row">
+                <div>
+                  <strong>Show guides</strong>
+                  <span>Overlay the ring circle and spokes on the preview.</span>
+                </div>
+                <ToggleSwitch checked={showGuides} onChange={setShowGuides} label="Show guides" />
+              </div>
+            </section>
+
             <section className="upload-panel" aria-labelledby="upload-heading">
               <h3 id="upload-heading">
                 <Upload className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
@@ -954,7 +977,7 @@ export default function App() {
             </section>
 
             <section className="control-section" aria-labelledby="attribution-heading">
-              <SectionHeader id="attribution-heading" accent="blue" title="5. Attribution" meta={`${usedLogos.length} logos`} />
+              <SectionHeader id="attribution-heading" accent="blue" title="6. Attribution" meta={`${usedLogos.length} logos`} />
               <p className="section-note">Credit for the logos in this design. Each Commons file page lists the author and license.</p>
               <textarea className="attribution-text control-scrollbar" readOnly rows={6} value={attributionText} aria-label="Attribution text" />
               <button type="button" className="secondary-action attribution-copy" onClick={copyAttribution}>
@@ -971,27 +994,6 @@ export default function App() {
         </aside>
 
         <main className="workspace" id="workspace-preview" aria-label="Logo wheel preview and export">
-          <div className="workspace-toolbar">
-            <div className="backdrop-controls" role="group" aria-labelledby="backdrop-heading">
-              <span id="backdrop-heading">Backdrop</span>
-              <div>
-                {BACKDROP_THEMES.map((backdropTheme) => (
-                  <button
-                    key={backdropTheme.id}
-                    type="button"
-                    onClick={() => setBackdrop(backdropTheme.id)}
-                    className={backdrop === backdropTheme.id ? 'active' : ''}
-                    aria-pressed={backdrop === backdropTheme.id}
-                  >
-                    {backdropTheme.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <ToggleSwitch checked={showGuides} onChange={setShowGuides} label="Display guides" showLabel />
-          </div>
-
           <div className="canvas-stage">
             <div className="canvas-frame">
               <div className={backdrop === 'transparent' ? 'bg-checkerboard canvas-backdrop' : 'canvas-backdrop'} />
