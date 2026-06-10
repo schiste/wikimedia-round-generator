@@ -2,7 +2,13 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_LOGOS } from './src/data/logos.js';
-import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsLogos as getCommonsLogoDefinitions, getPageForLogo } from './src/utils/commons.js';
+import {
+  COMMONS_CACHE_TTL_MS,
+  createCommonsImageInfoUrl,
+  getCommonsCredit,
+  getCommonsLogos as getCommonsLogoDefinitions,
+  getPageForLogo
+} from './src/utils/commons.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,7 +122,8 @@ async function resolveCommonsLogos() {
         timestamp: imageInfo.timestamp,
         sha1: imageInfo.sha1,
         mime: imageInfo.mime,
-        fetchedAt: new Date().toISOString()
+        fetchedAt: new Date().toISOString(),
+        ...getCommonsCredit(imageInfo)
       });
     } catch (error) {
       errors.push({

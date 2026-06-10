@@ -1,8 +1,8 @@
 import { sanitizeSvgMarkup } from '../utils/svg.js';
-import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
+import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsCredit, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
 import { indexById } from '../utils/collection.js';
 
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const CACHE_KEY = `wikiround.commonsLogos.v${CACHE_VERSION}`;
 const CACHE_TTL_MS = COMMONS_CACHE_TTL_MS;
 
@@ -22,6 +22,10 @@ function normalizeLiveLogo(entry, fallbackLogo, source) {
     commonsPageTitle: entry.commonsPageTitle,
     timestamp: entry.timestamp,
     sha1: entry.sha1,
+    artist: entry.artist || '',
+    licenseShortName: entry.licenseShortName || '',
+    licenseUrl: entry.licenseUrl || '',
+    attributionRequired: Boolean(entry.attributionRequired),
     fetchedAt: entry.fetchedAt || new Date().toISOString()
   };
 }
@@ -72,6 +76,10 @@ export function writeCachedCommonsLogos(logos) {
       commonsPageTitle: logo.commonsPageTitle,
       timestamp: logo.timestamp,
       sha1: logo.sha1,
+      artist: logo.artist,
+      licenseShortName: logo.licenseShortName,
+      licenseUrl: logo.licenseUrl,
+      attributionRequired: logo.attributionRequired,
       fetchedAt: logo.fetchedAt
     }))
   };
@@ -162,7 +170,8 @@ async function fetchDirectlyFromCommons(fallbackLogos, { signal } = {}) {
           descriptionUrl: imageInfo.descriptionurl,
           commonsPageTitle: page.title,
           timestamp: imageInfo.timestamp,
-          sha1: imageInfo.sha1
+          sha1: imageInfo.sha1,
+          ...getCommonsCredit(imageInfo)
         },
         fallbackLogo,
         'commons-direct'
