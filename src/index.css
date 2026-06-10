@@ -1366,7 +1366,34 @@ a:focus-visible {
   text-align: right;
 }
 
-/* Attribution (#4) */
+/* Attribution (#4, #9) */
+.attribution-format {
+  display: flex;
+  gap: 6px;
+}
+
+.attribution-format button {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.attribution-format button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.attribution-format button.active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .attribution-text {
   width: 100%;
   resize: vertical;

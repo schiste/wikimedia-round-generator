@@ -412,6 +412,7 @@ export default function App() {
   const [exportBackground, setExportBackground] = useState('preview');
   const [exportStatus, setExportStatus] = useState('');
   const [attributionStatus, setAttributionStatus] = useState('');
+  const [attributionFormat, setAttributionFormat] = useState('text');
   const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
@@ -442,7 +443,10 @@ export default function App() {
     return list;
   }, [centerLogo, ringLogos, logoById]);
 
-  const attributionText = useMemo(() => buildAttribution(usedLogos), [usedLogos]);
+  const attributionText = useMemo(
+    () => buildAttribution(usedLogos, { format: attributionFormat }),
+    [usedLogos, attributionFormat]
+  );
 
   const wheelSettings = {
     backdrop,
@@ -1009,7 +1013,22 @@ export default function App() {
 
             <section className="control-section" aria-labelledby="attribution-heading">
               <SectionHeader id="attribution-heading" accent="blue" title="6. Attribution" meta={`${usedLogos.length} logos`} />
-              <p className="section-note">Credit for the logos in this design. Each Commons file page lists the author and license.</p>
+              <p className="section-note">Credit for the logos in this design, with author and license where Commons provides them.</p>
+
+              <div className="attribution-format" role="group" aria-label="Attribution format">
+                <button type="button" className={attributionFormat === 'text' ? 'active' : ''} aria-pressed={attributionFormat === 'text'} onClick={() => setAttributionFormat('text')}>
+                  Plain text
+                </button>
+                <button
+                  type="button"
+                  className={attributionFormat === 'markdown' ? 'active' : ''}
+                  aria-pressed={attributionFormat === 'markdown'}
+                  onClick={() => setAttributionFormat('markdown')}
+                >
+                  Markdown
+                </button>
+              </div>
+
               <textarea className="attribution-text control-scrollbar" readOnly rows={6} value={attributionText} aria-label="Attribution text" />
               <button type="button" className="secondary-action attribution-copy" onClick={copyAttribution}>
                 <Copy className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
