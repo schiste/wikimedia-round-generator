@@ -32,16 +32,30 @@ export function createCommonsImageInfoUrl(logos, { origin } = {}) {
 
 // Commons extmetadata values are small HTML snippets (e.g. Artist is often a
 // link). Reduce to plain text without a DOM so this runs on the server too.
+function decodeEntityCodePoint(rawValue, radix, fallback) {
+  const codePoint = parseInt(rawValue, radix);
+  try {
+    return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function htmlToText(html) {
   if (!html) return '';
   return String(html)
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
+    .replace(/&ndash;/g, '-')
+    .replace(/&mdash;/g, '-')
+    .replace(/&middot;/g, '.')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex) => decodeEntityCodePoint(hex, 16, match))
+    .replace(/&#(\d+);/g, (match, decimal) => decodeEntityCodePoint(decimal, 10, match))
     .replace(/\s+/g, ' ')
     .trim();
 }

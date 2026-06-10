@@ -371,6 +371,12 @@ a:focus-visible {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.central-logo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
 /* Compact single-row central logo picker. */
 .central-logo-picker {
   display: flex;
@@ -415,6 +421,47 @@ a:focus-visible {
   background: var(--surface-strong);
   color: var(--text);
   padding: 7px 10px;
+}
+
+.central-logo-details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.central-logo-details > div {
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 6px 7px;
+}
+
+.central-logo-details dt {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.central-logo-details dd {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.central-logo-details a {
+  color: var(--accent);
+}
+
+.central-logo-details code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .logo-tile {
@@ -1439,7 +1486,6 @@ a:focus-visible {
   box-shadow: inset 0 2px 0 var(--accent);
 }
 
-/* Commons revision details (#8) */
 /* Small-screen refinements. Placed after the feature styles above so these
    overrides win the cascade at equal specificity. */
 @media (max-width: 640px) {
