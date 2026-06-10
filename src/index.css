@@ -90,7 +90,7 @@ a:focus-visible {
   --shadow: 0 28px 80px rgba(2, 6, 23, 0.42);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, transparent), var(--app-bg)),
@@ -248,86 +248,6 @@ a:focus-visible {
   flex-direction: column;
   gap: 28px;
   padding: 22px 24px 48px;
-}
-
-.commons-status {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 12px;
-}
-
-.commons-status strong,
-.commons-status span {
-  display: block;
-}
-
-.commons-status strong {
-  font-size: 11px;
-  line-height: 1.1;
-}
-
-.commons-status span {
-  margin-top: 2px;
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.commons-status > svg {
-  color: var(--accent);
-}
-
-.commons-status-fallback > svg,
-.commons-status-error > svg {
-  color: var(--amber);
-}
-
-.commons-status button {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-strong);
-  color: var(--text);
-}
-
-.top-band .commons-status {
-  min-width: min(420px, 42vw);
-  border-color: var(--line-soft);
-  background: var(--surface-strong);
-  padding: 4px 6px;
-}
-
-.top-band .commons-status > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-
-.top-band .commons-status strong {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.top-band .commons-status span {
-  min-width: 0;
-  overflow: hidden;
-  margin-top: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.top-band .commons-status button {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
 }
 
 .control-section {
@@ -1219,6 +1139,20 @@ a:focus-visible {
 }
 
 @media (max-width: 1023px) {
+  /* Switch from the fixed two-pane desktop app to a single scrolling document. */
+  .app-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .top-band {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    flex-wrap: wrap;
+  }
+
   .app-body {
     flex-direction: column;
   }
@@ -1226,12 +1160,29 @@ a:focus-visible {
   .sidebar,
   .workspace {
     width: 100%;
-    height: 50%;
+    height: auto;
+  }
+
+  /* Live preview first, editing controls below. */
+  .workspace {
+    order: 1;
   }
 
   .sidebar {
+    order: 2;
+    overflow: visible;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+  }
+
+  .canvas-stage {
+    flex: none;
+    padding: 20px 16px;
+  }
+
+  .canvas-frame {
+    width: min(440px, 100%);
+    max-height: none;
   }
 }
 
