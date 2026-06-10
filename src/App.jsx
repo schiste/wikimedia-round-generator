@@ -737,24 +737,42 @@ export default function App() {
       <div className="app-body">
         <aside className="sidebar control-scrollbar" aria-label="Logo wheel controls">
           <div className="sidebar-body">
-            <section className="control-section" aria-labelledby="visual-presets-heading">
-              <SectionHeader id="visual-presets-heading" accent="blue" icon={<Sliders className="h-4 w-4" />} title="1. Visual Presets" />
-              <div className="preset-grid">
+            <section className="control-section" aria-labelledby="ready-designs-heading">
+              <SectionHeader id="ready-designs-heading" accent="blue" icon={<Sliders className="h-4 w-4" />} title="1. Ready designs" />
+
+              <div className="preset-grid" role="group" aria-label="Ready designs">
                 {PRESETS.map((preset) => (
                   <button
                     key={preset.name}
                     type="button"
                     onClick={() => applyPreset(preset)}
                     className="preset-button"
-                    aria-label={`Apply ${preset.name} preset with ${preset.ring.length} surrounding logos`}
+                    aria-label={`Apply ${preset.name} (${preset.ring.length} ring logos)`}
                   >
                     <strong>{preset.name}</strong>
-                    <span>
-                      {preset.ring.length} ring items / Center: {preset.center}
-                    </span>
+                    <span>{preset.ring.length} logos</span>
                   </button>
                 ))}
               </div>
+
+              <select
+                className="preset-picker"
+                aria-label="Ready designs"
+                value=""
+                onChange={(event) => {
+                  const preset = PRESETS[Number(event.target.value)];
+                  if (preset) applyPreset(preset);
+                }}
+              >
+                <option value="" disabled>
+                  Choose a ready design…
+                </option>
+                {PRESETS.map((preset, index) => (
+                  <option key={preset.name} value={index}>
+                    {preset.name} ({preset.ring.length} logos)
+                  </option>
+                ))}
+              </select>
             </section>
 
             <section className="control-section" aria-labelledby="central-logo-heading">
