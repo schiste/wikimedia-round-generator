@@ -27,7 +27,6 @@ import { useLogoImageCache } from './hooks/useLogoImageCache.js';
 import { useTheme } from './hooks/useTheme.js';
 import { drawWheel, useWheelCanvas } from './hooks/useWheelCanvas.js';
 import { buildAttribution } from './utils/attribution.js';
-import { commonsFilePageUrl } from './utils/commons.js';
 import { parseImportedPresets, serializeCustomPresets } from './utils/customPresets.js';
 import { normalizeConfig, readConfigFromLocation } from './utils/designConfig.js';
 import { copyCanvasToClipboard, downloadBlob, downloadCanvasImage } from './utils/download.js';
@@ -50,13 +49,6 @@ const EXPORT_BACKGROUNDS = [
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
   return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
-}
-
-function formatCommonsDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
 }
 
 function SectionHeader({ accent = 'blue', icon, id, title, meta }) {
@@ -276,62 +268,18 @@ function LogoButton({ logo, active, disabled, onClick, accent = 'blue' }) {
 function CentralLogoPicker({ logos, selectedLogo, value, onChange }) {
   if (!selectedLogo) return null;
 
-  const sourceLabel = selectedLogo.commonsPageTitle || selectedLogo.commonsTitle || 'Local upload';
-  const isCommons = Boolean(selectedLogo.sha1 || selectedLogo.sourceUrl);
-  const filePageUrl = commonsFilePageUrl(selectedLogo);
-  const updated = formatCommonsDate(selectedLogo.timestamp);
-  const revision = selectedLogo.sha1 ? selectedLogo.sha1.slice(0, 10) : '';
-
   return (
-    <div className="central-logo-picker">
-      <div className="central-logo-preview">
-        <LogoGlyph logo={selectedLogo} className="central-logo-glyph" />
-        <div>
-          <strong>{selectedLogo.name}</strong>
-          <span id="central-logo-source">{sourceLabel}</span>
-        </div>
-      </div>
-
-      {isCommons && (
-        <dl className="commons-details">
-          {updated && (
-            <div>
-              <dt>Updated</dt>
-              <dd>{updated}</dd>
-            </div>
-          )}
-          {revision && (
-            <div>
-              <dt>Revision</dt>
-              <dd>
-                <code>{revision}…</code>
-              </dd>
-            </div>
-          )}
-          {filePageUrl && (
-            <div>
-              <dt>Source</dt>
-              <dd>
-                <a href={filePageUrl} target="_blank" rel="noreferrer">
-                  Commons file page
-                </a>
-              </dd>
-            </div>
-          )}
-        </dl>
-      )}
-
-      <label className="central-logo-select">
-        <span>Change central logo</span>
-        <select value={value} onChange={(event) => onChange(event.target.value)} aria-describedby="central-logo-source">
-          {logos.map((logo) => (
-            <option key={logo.id} value={logo.id}>
-              {logo.name}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
+    <label className="central-logo-picker">
+      <LogoGlyph logo={selectedLogo} className="central-logo-glyph" />
+      <span className="central-logo-label">Central logo</span>
+      <select className="central-logo-select" value={value} onChange={(event) => onChange(event.target.value)} aria-label="Central logo">
+        {logos.map((logo) => (
+          <option key={logo.id} value={logo.id}>
+            {logo.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
