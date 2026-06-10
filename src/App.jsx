@@ -179,7 +179,14 @@ function DesignToolbar({ presets, onSave, onApply, onDelete, onExport, onImport 
   return (
     <div className="design-toolbar">
       <div className="designs-menu" ref={menuRef}>
-        <button type="button" className="header-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <button
+          type="button"
+          className="header-button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`My designs${presets.length > 0 ? ` (${presets.length} saved)` : ''}`}
+          onClick={() => setOpen((value) => !value)}
+        >
           <FolderOpen className="h-4 w-4" aria-hidden="true" focusable="false" />
           <span>My designs</span>
           {presets.length > 0 && <span className="header-badge">{presets.length}</span>}
@@ -219,7 +226,7 @@ function DesignToolbar({ presets, onSave, onApply, onDelete, onExport, onImport 
         )}
       </div>
 
-      <button type="button" className="header-button" onClick={onSave}>
+      <button type="button" className="header-button" onClick={onSave} aria-label="Save current design">
         <Save className="h-4 w-4" aria-hidden="true" focusable="false" />
         <span>Save</span>
       </button>
@@ -227,10 +234,10 @@ function DesignToolbar({ presets, onSave, onApply, onDelete, onExport, onImport 
       <label className="header-button">
         <Upload className="h-4 w-4" aria-hidden="true" focusable="false" />
         <span>Import</span>
-        <input type="file" accept="application/json,.json" onChange={handleImport} />
+        <input type="file" accept="application/json,.json" onChange={handleImport} aria-label="Import designs from a JSON file" />
       </label>
 
-      <button type="button" className="header-button" onClick={onExport} disabled={presets.length === 0}>
+      <button type="button" className="header-button" onClick={onExport} disabled={presets.length === 0} aria-label="Export designs to a JSON file">
         <Download className="h-4 w-4" aria-hidden="true" focusable="false" />
         <span>Export</span>
       </button>
