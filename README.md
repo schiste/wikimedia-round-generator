@@ -36,6 +36,8 @@ Recommended environment override:
 COMMONS_USER_AGENT="WikiRoundGenerator/0.1 (https://YOUR-TOOL.toolforge.org/; your-contact@example.org)"
 ```
 
+For the production update and verification checklist, see [Toolforge deployment](./docs/toolforge-deployment.md).
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`). See [LICENSE](./LICENSE).

@@ -2,3 +2,18 @@ node_modules/
 dist/
 output/
 .DS_Store
+*.log
+
+# Local environment and account-specific configuration.
+.env
+.env.*
+!.env.example
+
+# Local private material and browser/debug state.
+*.pem
+*.key
+*.p12
+*.pfx
+.ssh/
+.chau7/
+.playwright-mcp/
