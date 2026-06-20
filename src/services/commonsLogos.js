@@ -264,7 +264,10 @@ export async function fetchCommonsLogo(input, { signal, id, name, color, source 
 
   try {
     return await fetchSingleFromToolforgeEndpoint(commonsTitle, fallbackLogo, { signal, source });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted || error.name === 'AbortError') {
+      throw error;
+    }
     // Vite development has no Express API, and production may temporarily miss
     // the single-logo endpoint; direct Commons fetch keeps custom/library logos usable.
   }

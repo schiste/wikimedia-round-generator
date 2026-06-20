@@ -11,22 +11,21 @@ import {
   GripVertical,
   Image as ImageIcon,
   Library,
-  Minus,
   Moon,
-  Plus,
   RefreshCw,
   Save,
-  Search,
   Sliders,
   Sparkles,
   Sun,
   Trash2,
-  Upload,
-  X
+  Upload
 } from 'lucide-react';
-import { AFFILIATE_LOGO_KIND_COUNTS, AFFILIATE_LOGO_KIND_LABELS, AFFILIATE_LOGOS } from './data/affiliateLogos.js';
+import { LogoGlyph } from './components/LogoGlyph.jsx';
+import { LogoLibraryDialog } from './components/LogoLibraryDialog.jsx';
+import { AFFILIATE_LOGOS } from './data/affiliateLogos.js';
 import { BACKDROP_THEMES, DEFAULT_LOGOS, HALO_COLORS, PRESETS, getBackdropFill } from './data/logos.js';
-import { fetchCatalogCommonsLogo, fetchCommonsLogo } from './services/commonsLogos.js';
+import { fetchCommonsLogo } from './services/commonsLogos.js';
+import { useAffiliateLogoLibrary } from './hooks/useAffiliateLogoLibrary.js';
 import { useCommonsLogoSync } from './hooks/useCommonsLogoSync.js';
 import { useCustomPresets } from './hooks/useCustomPresets.js';
 import { useDesignUrlSync } from './hooks/useDesignUrlSync.js';
@@ -55,17 +54,6 @@ const EXPORT_BACKGROUNDS = [
   { id: 'white', label: 'White' },
   { id: 'dark', label: 'Dark' }
 ];
-const LOGO_LIBRARY_FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'core', label: 'Core' },
-  { id: 'chapter', label: AFFILIATE_LOGO_KIND_LABELS.chapter },
-  { id: 'thematic', label: AFFILIATE_LOGO_KIND_LABELS.thematic },
-  { id: 'user-group', label: AFFILIATE_LOGO_KIND_LABELS['user-group'] }
-];
-
-function LogoGlyph({ logo, className = 'logo-glyph' }) {
-  return <div className={className} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logo.svg }} />;
-}
 
 function formatCommonsDate(value) {
   if (!value) return '';
@@ -435,186 +423,6 @@ function SequenceList({ ringLogos, logoById, onMove, onShift, onRemove }) {
   );
 }
 
-function normalizeSearchText(value) {
-  return String(value || '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function LibraryLogoMark({ entry, logo }) {
-  if (logo?.svg) {
-    return <LogoGlyph logo={logo} className="library-logo-glyph" />;
-  }
-
-  return (
-    <span className="library-logo-placeholder" aria-hidden="true">
-      {(entry.code || entry.name || '?').slice(0, 3)}
-    </span>
-  );
-}
-
-function LogoLibraryDialog({
-  centerLogo,
-  entries,
-  errorById,
-  loadingById,
-  logoById,
-  onAddToRing,
-  onClose,
-  onRemoveFromRing,
-  onSetCenter,
-  open,
-  ringLogos
-}) {
-  const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const searchRef = useRef(null);
-
-  const counts = useMemo(() => {
-    const next = { all: entries.length, core: 0, ...AFFILIATE_LOGO_KIND_COUNTS };
-    entries.forEach((entry) => {
-      if (entry.kind === 'core') next.core += 1;
-    });
-    return next;
-  }, [entries]);
-
-  const filteredEntries = useMemo(() => {
-    const tokens = normalizeSearchText(query).split(/\s+/).filter(Boolean);
-
-    return entries.filter((entry) => {
-      if (activeFilter !== 'all' && entry.kind !== activeFilter) return false;
-      if (tokens.length === 0) return true;
-
-      const searchText = normalizeSearchText(`${entry.name} ${entry.code} ${entry.kindLabel} ${entry.commonsTitle}`);
-      return tokens.every((token) => searchText.includes(token));
-    });
-  }, [activeFilter, entries, query]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
-    function handleKey(event) {
-      if (event.key === 'Escape') onClose();
-    }
-
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [onClose, open]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      className="library-dialog-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section className="library-dialog" role="dialog" aria-modal="true" aria-labelledby="logo-library-title">
-        <header className="library-dialog-header">
-          <div>
-            <Library className="h-4 w-4" aria-hidden="true" focusable="false" />
-            <h2 id="logo-library-title">Logo library</h2>
-          </div>
-          <button type="button" className="library-close-button" onClick={onClose} aria-label="Close logo library">
-            <X className="h-4 w-4" aria-hidden="true" focusable="false" />
-          </button>
-        </header>
-
-        <div className="library-toolbar">
-          <label className="library-search">
-            <Search className="h-4 w-4" aria-hidden="true" focusable="false" />
-            <input
-              ref={searchRef}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name, code, or project"
-              aria-label="Search logo library"
-            />
-          </label>
-
-          <div className="library-filter-row" role="tablist" aria-label="Logo library filters">
-            {LOGO_LIBRARY_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                type="button"
-                role="tab"
-                aria-selected={activeFilter === filter.id}
-                className={activeFilter === filter.id ? 'active' : ''}
-                onClick={() => setActiveFilter(filter.id)}
-              >
-                <span>{filter.label}</span>
-                <b>{counts[filter.id] || 0}</b>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="library-results-summary" role="status" aria-live="polite">
-          <span>{filteredEntries.length} logos</span>
-          <span>SVG affiliate logos only</span>
-        </div>
-
-        <div className="library-results control-scrollbar">
-          {filteredEntries.length === 0 ? (
-            <p className="library-empty">No matching logos.</p>
-          ) : (
-            filteredEntries.map((entry) => {
-              const loadedLogo = logoById.get(entry.id);
-              const isCenter = entry.id === centerLogo;
-              const isInRing = ringLogos.includes(entry.id);
-              const isLoading = Boolean(loadingById[entry.id]);
-              const error = errorById[entry.id];
-
-              return (
-                <article key={entry.id} className={`library-card${isCenter || isInRing ? ' library-card-active' : ''}`}>
-                  <LibraryLogoMark entry={entry} logo={loadedLogo} />
-                  <div className="library-card-main">
-                    <div className="library-card-title">
-                      <strong title={entry.name}>{entry.name}</strong>
-                      {entry.code && <span>{entry.code}</span>}
-                    </div>
-                    <div className="library-card-meta">
-                      <span>{entry.kindLabel}</span>
-                      {entry.metaPageUrl && (
-                        <a href={entry.metaPageUrl} target="_blank" rel="noreferrer">
-                          Meta
-                        </a>
-                      )}
-                    </div>
-                    {error && <p className="library-card-error">{error}</p>}
-                  </div>
-                  <div className="library-card-actions">
-                    <button type="button" onClick={() => onSetCenter(entry)} disabled={isCenter || isLoading}>
-                      {isLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
-                      <span>{isCenter ? 'Center' : 'Set center'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => (isInRing ? onRemoveFromRing(entry.id) : onAddToRing(entry))}
-                      disabled={isCenter || isLoading}
-                    >
-                      {isInRing ? <Minus className="h-3.5 w-3.5" aria-hidden="true" /> : <Plus className="h-3.5 w-3.5" aria-hidden="true" />}
-                      <span>{isInRing ? 'Remove' : 'Add'}</span>
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
 export default function App() {
   // Seed editor state from the shared URL hash once, falling back to defaults.
   const initialConfig = useMemo(() => normalizeConfig(readConfigFromLocation()), []);
@@ -622,16 +430,16 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const { remoteLogos, syncState, refreshCommons } = useCommonsLogoSync(DEFAULT_LOGOS);
   const [customLogos, setCustomLogos] = useState([]);
-  const [affiliateLogos, setAffiliateLogos] = useState([]);
+  const [centerLogo, setCenterLogo] = useState(initialConfig.centerLogo);
+  const [ringLogos, setRingLogos] = useState(initialConfig.ringLogos);
+  const selectedLogoIds = useMemo(() => [centerLogo, ...ringLogos], [centerLogo, ringLogos]);
+  const { affiliateLogos, affiliateLoadingById, affiliateErrorById, ensureAffiliateLogo } = useAffiliateLogoLibrary(selectedLogoIds);
   const extraLogos = useMemo(() => [...affiliateLogos, ...customLogos], [affiliateLogos, customLogos]);
   const { activeCommonsCount, allLogos, baseLogos, logoById } = useLogoCatalog({
     fallbackLogos: DEFAULT_LOGOS,
     remoteLogos,
     customLogos: extraLogos
   });
-
-  const [centerLogo, setCenterLogo] = useState(initialConfig.centerLogo);
-  const [ringLogos, setRingLogos] = useState(initialConfig.ringLogos);
 
   const [showHalo, setShowHalo] = useState(initialConfig.showHalo);
   const [haloColor, setHaloColor] = useState(initialConfig.haloColor);
@@ -651,8 +459,6 @@ export default function App() {
   const [commonsLoading, setCommonsLoading] = useState(false);
   const [commonsStatus, setCommonsStatus] = useState(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [affiliateLoadingById, setAffiliateLoadingById] = useState({});
-  const [affiliateErrorById, setAffiliateErrorById] = useState({});
   const [exportSize, setExportSize] = useState(1600);
   const [exportBackground, setExportBackground] = useState('preview');
   const [exportStatus, setExportStatus] = useState('');
@@ -661,8 +467,6 @@ export default function App() {
   const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
-  const affiliateById = useMemo(() => new Map(AFFILIATE_LOGOS.map((entry) => [entry.id, entry])), []);
-  const hydratedAffiliateIds = useMemo(() => new Set(affiliateLogos.map((logo) => logo.id)), [affiliateLogos]);
   const coreLibraryEntries = useMemo(
     () =>
       baseLogos.map((logo) => ({
@@ -851,37 +655,6 @@ export default function App() {
     }
   }
 
-  async function ensureAffiliateLogo(entry, { signal } = {}) {
-    if (!entry) return null;
-    if (entry.kind === 'core') return logoById.get(entry.id) || null;
-
-    const loadedLogo = logoById.get(entry.id);
-    if (loadedLogo) return loadedLogo;
-
-    setAffiliateLoadingById((current) => ({ ...current, [entry.id]: true }));
-    setAffiliateErrorById((current) => {
-      const { [entry.id]: removed, ...rest } = current;
-      return rest;
-    });
-
-    try {
-      const logo = await fetchCatalogCommonsLogo(entry, { signal });
-      setAffiliateLogos((current) => [...current.filter((item) => item.id !== logo.id), logo]);
-      return logo;
-    } catch (error) {
-      if (signal?.aborted) return null;
-      setAffiliateErrorById((current) => ({ ...current, [entry.id]: error.message || 'Could not load this logo.' }));
-      return null;
-    } finally {
-      if (!signal?.aborted) {
-        setAffiliateLoadingById((current) => {
-          const { [entry.id]: removed, ...rest } = current;
-          return rest;
-        });
-      }
-    }
-  }
-
   async function addLibraryLogoToRing(entry) {
     const logo = entry.kind === 'core' ? logoById.get(entry.id) : await ensureAffiliateLogo(entry);
     if (!logo || logo.id === centerLogo) return;
@@ -902,26 +675,6 @@ export default function App() {
       return current.length > 1 ? current.filter((itemId) => itemId !== id) : current;
     });
   }
-
-  useEffect(() => {
-    const idsToHydrate = [centerLogo, ...ringLogos].filter(
-      (id) => affiliateById.has(id) && !hydratedAffiliateIds.has(id) && !affiliateLoadingById[id] && !affiliateErrorById[id]
-    );
-
-    if (idsToHydrate.length === 0) return undefined;
-
-    const controller = new AbortController();
-    idsToHydrate.forEach((id) => {
-      ensureAffiliateLogo(affiliateById.get(id), { signal: controller.signal });
-    });
-
-    return () => {
-      controller.abort();
-    };
-    // Hydration intentionally follows selected ids; ensureAffiliateLogo is local
-    // and recreated per render, but its state writes are guarded by the id filters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [affiliateById, affiliateErrorById, affiliateLoadingById, centerLogo, hydratedAffiliateIds, ringLogos]);
 
   function shiftRingItem(index, direction) {
     setRingLogos((current) => {
