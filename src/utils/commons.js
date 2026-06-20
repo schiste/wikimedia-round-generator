@@ -86,6 +86,65 @@ function normalizeCommonsTitle(title) {
   return title.replaceAll('_', ' ');
 }
 
+// Normalizes whatever the user pastes — a Commons file-page URL, an
+// upload.wikimedia.org image URL (incl. thumbnails), or a bare title/filename —
+// into a canonical `File:Name.ext` title. Returns null if nothing usable.
+export function parseCommonsTitle(input) {
+  if (!input) return null;
+  let raw = String(input).trim();
+  if (!raw) return null;
+
+  // Give bare wikimedia hosts (no scheme) a scheme so URL parsing works.
+  if (raw.startsWith('//')) raw = `https:${raw}`;
+  else if (/^(?:www\.)?(?:commons|upload)\.wikimedia\.org\//i.test(raw)) raw = `https://${raw}`;
+
+  if (/^https?:\/\//i.test(raw)) {
+    let url;
+    try {
+      url = new URL(raw);
+    } catch {
+      return null;
+    }
+
+    const titleParam = url.searchParams.get('title');
+    if (titleParam) {
+      raw = titleParam;
+    } else if (/upload\.wikimedia\.org$/i.test(url.hostname)) {
+      // .../commons/a/ab/Name.svg or .../commons/thumb/a/ab/Name.svg/120px-Name.svg
+      const last = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '');
+      raw = last.replace(/^\d+px-/, '');
+    } else {
+      raw = decodeURIComponent(url.pathname.replace(/^\/wiki\//, ''));
+      const filePath = raw.match(/^Special:FilePath\/(.+)$/i);
+      if (filePath) raw = filePath[1];
+    }
+  } else if (raw.includes('/wiki/')) {
+    raw = decodeURIComponent(raw.slice(raw.indexOf('/wiki/') + '/wiki/'.length));
+    const filePath = raw.match(/^Special:FilePath\/(.+)$/i);
+    if (filePath) raw = filePath[1];
+  } else if (raw.includes('/')) {
+    // A bare path such as /wikipedia/commons/a/ab/Name.svg or a thumbnail path.
+    const last = decodeURIComponent(raw.split(/[?#]/)[0].split('/').filter(Boolean).pop() || '');
+    raw = last.replace(/^\d+px-/, '');
+  }
+
+  raw = raw.split(/[?#]/)[0].trim().replace(/^\/+/, '');
+  const withoutNs = raw.replace(/^(?:File|Image)\s*:\s*/i, '').trim();
+  if (!withoutNs) return null;
+
+  return `File:${withoutNs}`;
+}
+
+// Human-readable name from a Commons title, e.g. "File:Wikimania_2020.svg" -> "Wikimania 2020".
+export function commonsTitleToName(title) {
+  const name = String(title || '')
+    .replace(/^File:/i, '')
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/_/g, ' ')
+    .trim();
+  return name || 'Commons logo';
+}
+
 const COMMONS_FILE_BASE = 'https://commons.wikimedia.org/wiki/';
 
 // Best-available link to a logo's Commons file page (the source of truth for its

@@ -13,6 +13,12 @@ npm run build
 npm run serve
 ```
 
+Refresh the SVG-only affiliate/user group logo catalog from Meta-Wiki:
+
+```bash
+node scripts/update-affiliate-logo-catalog.mjs
+```
+
 Local URLs:
 
 ```text

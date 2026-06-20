@@ -7,7 +7,8 @@ import {
   createCommonsImageInfoUrl,
   getCommonsCredit,
   getCommonsLogos as getCommonsLogoDefinitions,
-  getPageForLogo
+  getPageForLogo,
+  parseCommonsTitle
 } from './src/utils/commons.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +31,7 @@ let logoCache = {
   logos: [],
   errors: []
 };
+const singleLogoCache = new Map();
 let refreshPromise = null;
 
 function cacheIsFresh() {
@@ -147,6 +149,37 @@ async function resolveCommonsLogos() {
   return logoCache;
 }
 
+async function resolveSingleCommonsLogo(commonsTitle) {
+  const metadata = await fetchCommonsMetadata([{ commonsTitle }]);
+  const page = getPageForLogo(metadata, { commonsTitle });
+  const imageInfo = page?.imageinfo?.[0];
+
+  if (!page || page.missing !== undefined || page.invalid !== undefined) {
+    throw new Error(`No Commons file named "${commonsTitle}" was found`);
+  }
+
+  if (!imageInfo?.url || imageInfo.mime !== 'image/svg+xml') {
+    throw new Error(`Commons file "${commonsTitle}" is not an SVG`);
+  }
+
+  const svg = await fetchSvgText(imageInfo.url);
+  return {
+    fetchedAt: Date.now(),
+    logo: {
+      commonsTitle,
+      commonsPageTitle: page.title,
+      svg,
+      sourceUrl: imageInfo.url,
+      descriptionUrl: imageInfo.descriptionurl,
+      timestamp: imageInfo.timestamp,
+      sha1: imageInfo.sha1,
+      mime: imageInfo.mime,
+      fetchedAt: new Date().toISOString(),
+      ...getCommonsCredit(imageInfo)
+    }
+  };
+}
+
 async function getResolvedCommonsLogos({ force = false } = {}) {
   if (!force && cacheIsFresh()) {
     return { ...logoCache, source: 'toolforge-cache' };
@@ -174,8 +207,33 @@ async function getResolvedCommonsLogos({ force = false } = {}) {
   }
 }
 
+async function getResolvedSingleCommonsLogo(commonsTitle, { force = false } = {}) {
+  const cached = singleLogoCache.get(commonsTitle);
+  const cachedAge = cached ? Date.now() - cached.fetchedAt : Number.POSITIVE_INFINITY;
+
+  if (!force && cached && cachedAge < CACHE_TTL_MS) {
+    return { ...cached, source: 'toolforge-single-cache' };
+  }
+
+  try {
+    const result = await resolveSingleCommonsLogo(commonsTitle);
+    singleLogoCache.set(commonsTitle, result);
+    return { ...result, source: 'toolforge-single-commons' };
+  } catch (error) {
+    if (cached && cachedAge < STALE_TTL_MS) {
+      return {
+        ...cached,
+        source: 'toolforge-single-stale-cache',
+        errors: [{ message: error.message }]
+      };
+    }
+
+    throw error;
+  }
+}
+
 app.get('/api/healthz', (req, res) => {
-  res.json({ ok: true, cacheEntries: logoCache.logos.length });
+  res.json({ ok: true, cacheEntries: logoCache.logos.length, singleLogoCacheEntries: singleLogoCache.size });
 });
 
 app.get('/api/logos', async (req, res) => {
@@ -195,6 +253,40 @@ app.get('/api/logos', async (req, res) => {
       source: 'toolforge-error',
       message: error.message,
       logos: [],
+      errors: [{ message: error.message }]
+    });
+  }
+});
+
+app.get('/api/logo', async (req, res) => {
+  const commonsTitle = parseCommonsTitle(req.query.title);
+
+  if (!commonsTitle) {
+    res.status(400).json({
+      source: 'toolforge-error',
+      message: 'Missing or invalid Commons file title',
+      logo: null,
+      errors: [{ message: 'Missing or invalid Commons file title' }]
+    });
+    return;
+  }
+
+  try {
+    const forceRefresh = req.query.refresh === '1';
+    const payload = await getResolvedSingleCommonsLogo(commonsTitle, { force: forceRefresh });
+    res.set('Cache-Control', forceRefresh ? 'no-store' : 'public, max-age=300, stale-while-revalidate=3600');
+    res.json({
+      source: payload.source,
+      fetchedAt: new Date(payload.fetchedAt).toISOString(),
+      cacheTtlMs: CACHE_TTL_MS,
+      logo: payload.logo,
+      errors: payload.errors || []
+    });
+  } catch (error) {
+    res.status(502).json({
+      source: 'toolforge-error',
+      message: error.message,
+      logo: null,
       errors: [{ message: error.message }]
     });
   }

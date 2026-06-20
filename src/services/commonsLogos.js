@@ -1,5 +1,13 @@
 import { sanitizeSvgMarkup } from '../utils/svg.js';
-import { COMMONS_CACHE_TTL_MS, createCommonsImageInfoUrl, getCommonsCredit, getCommonsLogos, getPageForLogo } from '../utils/commons.js';
+import {
+  COMMONS_CACHE_TTL_MS,
+  commonsTitleToName,
+  createCommonsImageInfoUrl,
+  getCommonsCredit,
+  getCommonsLogos,
+  getPageForLogo,
+  parseCommonsTitle
+} from '../utils/commons.js';
 import { indexById } from '../utils/collection.js';
 
 const CACHE_VERSION = 4;
@@ -194,6 +202,144 @@ async function fetchDirectlyFromCommons(fallbackLogos, { signal } = {}) {
     source: 'commons-direct',
     fetchedAt: new Date().toISOString(),
     errors
+  };
+}
+
+function logoIdFromTitle(title) {
+  const slug = String(title)
+    .replace(/^File:/i, '')
+    .replace(/\.[a-z0-9]+$/i, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+  return `commons-${slug || 'logo'}`;
+}
+
+function fallbackLogoForTitle(commonsTitle, options = {}) {
+  return {
+    id: options.id || logoIdFromTitle(commonsTitle),
+    name: options.name || commonsTitleToName(commonsTitle),
+    color: options.color || '#475569',
+    commonsTitle
+  };
+}
+
+async function fetchSingleFromToolforgeEndpoint(commonsTitle, fallbackLogo, { signal, source } = {}) {
+  const response = await fetch(`/api/logo?title=${encodeURIComponent(commonsTitle)}`, {
+    signal,
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!response.ok || !contentType.includes('application/json')) {
+    throw new Error('Toolforge single-logo endpoint is unavailable');
+  }
+
+  const payload = await response.json();
+  if (!payload.logo?.svg) {
+    throw new Error('Toolforge single-logo endpoint returned an invalid payload');
+  }
+
+  const logo = normalizeLiveLogo(payload.logo, fallbackLogo, source || 'toolforge-logo');
+  if (!logo) {
+    throw new Error('Toolforge single-logo endpoint returned no usable SVG');
+  }
+
+  return logo;
+}
+
+// Resolves a single user-supplied Commons reference (file-page URL, image URL,
+// or bare title) to a ready-to-use SVG logo. SVG-only, since raster files would
+// taint the export canvas and can't be inlined safely.
+export async function fetchCommonsLogo(input, { signal, id, name, color, source = 'commons-custom' } = {}) {
+  const commonsTitle = parseCommonsTitle(input);
+  if (!commonsTitle) {
+    throw new Error('Enter a Commons file URL or title, e.g. File:Example.svg');
+  }
+
+  const fallbackLogo = fallbackLogoForTitle(commonsTitle, { id, name, color });
+
+  try {
+    return await fetchSingleFromToolforgeEndpoint(commonsTitle, fallbackLogo, { signal, source });
+  } catch {
+    // Vite development has no Express API, and production may temporarily miss
+    // the single-logo endpoint; direct Commons fetch keeps custom/library logos usable.
+  }
+
+  const metaResponse = await fetch(createCommonsImageInfoUrl([{ commonsTitle }], { origin: '*' }), {
+    signal,
+    headers: { Accept: 'application/json' }
+  });
+  if (!metaResponse.ok) {
+    throw new Error('Could not reach Wikimedia Commons. Please try again.');
+  }
+
+  const metadata = await metaResponse.json();
+  const page = getPageForLogo(metadata, { commonsTitle });
+  if (!page || page.missing !== undefined || page.invalid !== undefined) {
+    throw new Error(`No file named "${commonsTitle}" was found on Wikimedia Commons.`);
+  }
+
+  const imageInfo = page.imageinfo?.[0];
+  if (!imageInfo?.url) {
+    throw new Error('Commons returned no file information for that title.');
+  }
+  if (imageInfo.mime !== 'image/svg+xml') {
+    throw new Error('Only SVG files are supported, and that file is not an SVG.');
+  }
+
+  const svgResponse = await fetch(imageInfo.url, { signal, headers: { Accept: 'image/svg+xml' } });
+  if (!svgResponse.ok) {
+    throw new Error('Could not download the SVG from Commons.');
+  }
+
+  const svg = sanitizeSvgMarkup(await svgResponse.text());
+  if (!svg) {
+    throw new Error('That SVG could not be parsed safely.');
+  }
+
+  const title = page.title || commonsTitle;
+  const logo = normalizeLiveLogo(
+    {
+      svg,
+      sourceUrl: imageInfo.url,
+      descriptionUrl: imageInfo.descriptionurl,
+      commonsPageTitle: page.title,
+      timestamp: imageInfo.timestamp,
+      sha1: imageInfo.sha1,
+      ...getCommonsCredit(imageInfo)
+    },
+    {
+      ...fallbackLogo,
+      commonsTitle: title
+    },
+    source
+  );
+
+  if (!logo) {
+    throw new Error('That SVG could not be parsed safely.');
+  }
+
+  return logo;
+}
+
+export async function fetchCatalogCommonsLogo(entry, { signal } = {}) {
+  const logo = await fetchCommonsLogo(entry.commonsTitle, {
+    signal,
+    id: entry.id,
+    name: entry.name,
+    color: entry.color || '#475569',
+    source: 'commons-affiliate'
+  });
+
+  return {
+    ...logo,
+    affiliateCode: entry.code,
+    affiliateKind: entry.kind,
+    affiliatePageUrl: entry.metaPageUrl
   };
 }
 
