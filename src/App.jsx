@@ -4,21 +4,29 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  Cloud,
   Copy,
   Download,
   FolderOpen,
   GripVertical,
   Image as ImageIcon,
+  Library,
+  Minus,
   Moon,
+  Plus,
   RefreshCw,
   Save,
+  Search,
   Sliders,
   Sparkles,
   Sun,
   Trash2,
-  Upload
+  Upload,
+  X
 } from 'lucide-react';
+import { AFFILIATE_LOGO_KIND_COUNTS, AFFILIATE_LOGO_KIND_LABELS, AFFILIATE_LOGOS } from './data/affiliateLogos.js';
 import { BACKDROP_THEMES, DEFAULT_LOGOS, HALO_COLORS, PRESETS, getBackdropFill } from './data/logos.js';
+import { fetchCatalogCommonsLogo, fetchCommonsLogo } from './services/commonsLogos.js';
 import { useCommonsLogoSync } from './hooks/useCommonsLogoSync.js';
 import { useCustomPresets } from './hooks/useCustomPresets.js';
 import { useDesignUrlSync } from './hooks/useDesignUrlSync.js';
@@ -38,7 +46,6 @@ import {
   getCenterLogoScale,
   getCollisionSafeLogoScale
 } from './utils/layout.js';
-import { sanitizeSvgMarkup } from './utils/svg.js';
 import { generateWheelSvg } from './utils/wheelSvg.js';
 
 const EXPORT_SIZES = [800, 1600, 2400, 4000];
@@ -47,6 +54,13 @@ const EXPORT_BACKGROUNDS = [
   { id: 'transparent', label: 'Transparent' },
   { id: 'white', label: 'White' },
   { id: 'dark', label: 'Dark' }
+];
+const LOGO_LIBRARY_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'core', label: 'Core' },
+  { id: 'chapter', label: AFFILIATE_LOGO_KIND_LABELS.chapter },
+  { id: 'thematic', label: AFFILIATE_LOGO_KIND_LABELS.thematic },
+  { id: 'user-group', label: AFFILIATE_LOGO_KIND_LABELS['user-group'] }
 ];
 
 function LogoGlyph({ logo, className = 'logo-glyph' }) {
@@ -421,6 +435,186 @@ function SequenceList({ ringLogos, logoById, onMove, onShift, onRemove }) {
   );
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function LibraryLogoMark({ entry, logo }) {
+  if (logo?.svg) {
+    return <LogoGlyph logo={logo} className="library-logo-glyph" />;
+  }
+
+  return (
+    <span className="library-logo-placeholder" aria-hidden="true">
+      {(entry.code || entry.name || '?').slice(0, 3)}
+    </span>
+  );
+}
+
+function LogoLibraryDialog({
+  centerLogo,
+  entries,
+  errorById,
+  loadingById,
+  logoById,
+  onAddToRing,
+  onClose,
+  onRemoveFromRing,
+  onSetCenter,
+  open,
+  ringLogos
+}) {
+  const [query, setQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const searchRef = useRef(null);
+
+  const counts = useMemo(() => {
+    const next = { all: entries.length, core: 0, ...AFFILIATE_LOGO_KIND_COUNTS };
+    entries.forEach((entry) => {
+      if (entry.kind === 'core') next.core += 1;
+    });
+    return next;
+  }, [entries]);
+
+  const filteredEntries = useMemo(() => {
+    const tokens = normalizeSearchText(query).split(/\s+/).filter(Boolean);
+
+    return entries.filter((entry) => {
+      if (activeFilter !== 'all' && entry.kind !== activeFilter) return false;
+      if (tokens.length === 0) return true;
+
+      const searchText = normalizeSearchText(`${entry.name} ${entry.code} ${entry.kindLabel} ${entry.commonsTitle}`);
+      return tokens.every((token) => searchText.includes(token));
+    });
+  }, [activeFilter, entries, query]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
+    function handleKey(event) {
+      if (event.key === 'Escape') onClose();
+    }
+
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="library-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="library-dialog" role="dialog" aria-modal="true" aria-labelledby="logo-library-title">
+        <header className="library-dialog-header">
+          <div>
+            <Library className="h-4 w-4" aria-hidden="true" focusable="false" />
+            <h2 id="logo-library-title">Logo library</h2>
+          </div>
+          <button type="button" className="library-close-button" onClick={onClose} aria-label="Close logo library">
+            <X className="h-4 w-4" aria-hidden="true" focusable="false" />
+          </button>
+        </header>
+
+        <div className="library-toolbar">
+          <label className="library-search">
+            <Search className="h-4 w-4" aria-hidden="true" focusable="false" />
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, code, or project"
+              aria-label="Search logo library"
+            />
+          </label>
+
+          <div className="library-filter-row" role="tablist" aria-label="Logo library filters">
+            {LOGO_LIBRARY_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                role="tab"
+                aria-selected={activeFilter === filter.id}
+                className={activeFilter === filter.id ? 'active' : ''}
+                onClick={() => setActiveFilter(filter.id)}
+              >
+                <span>{filter.label}</span>
+                <b>{counts[filter.id] || 0}</b>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="library-results-summary" role="status" aria-live="polite">
+          <span>{filteredEntries.length} logos</span>
+          <span>SVG affiliate logos only</span>
+        </div>
+
+        <div className="library-results control-scrollbar">
+          {filteredEntries.length === 0 ? (
+            <p className="library-empty">No matching logos.</p>
+          ) : (
+            filteredEntries.map((entry) => {
+              const loadedLogo = logoById.get(entry.id);
+              const isCenter = entry.id === centerLogo;
+              const isInRing = ringLogos.includes(entry.id);
+              const isLoading = Boolean(loadingById[entry.id]);
+              const error = errorById[entry.id];
+
+              return (
+                <article key={entry.id} className={`library-card${isCenter || isInRing ? ' library-card-active' : ''}`}>
+                  <LibraryLogoMark entry={entry} logo={loadedLogo} />
+                  <div className="library-card-main">
+                    <div className="library-card-title">
+                      <strong title={entry.name}>{entry.name}</strong>
+                      {entry.code && <span>{entry.code}</span>}
+                    </div>
+                    <div className="library-card-meta">
+                      <span>{entry.kindLabel}</span>
+                      {entry.metaPageUrl && (
+                        <a href={entry.metaPageUrl} target="_blank" rel="noreferrer">
+                          Meta
+                        </a>
+                      )}
+                    </div>
+                    {error && <p className="library-card-error">{error}</p>}
+                  </div>
+                  <div className="library-card-actions">
+                    <button type="button" onClick={() => onSetCenter(entry)} disabled={isCenter || isLoading}>
+                      {isLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                      <span>{isCenter ? 'Center' : 'Set center'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => (isInRing ? onRemoveFromRing(entry.id) : onAddToRing(entry))}
+                      disabled={isCenter || isLoading}
+                    >
+                      {isInRing ? <Minus className="h-3.5 w-3.5" aria-hidden="true" /> : <Plus className="h-3.5 w-3.5" aria-hidden="true" />}
+                      <span>{isInRing ? 'Remove' : 'Add'}</span>
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   // Seed editor state from the shared URL hash once, falling back to defaults.
   const initialConfig = useMemo(() => normalizeConfig(readConfigFromLocation()), []);
@@ -428,10 +622,12 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const { remoteLogos, syncState, refreshCommons } = useCommonsLogoSync(DEFAULT_LOGOS);
   const [customLogos, setCustomLogos] = useState([]);
+  const [affiliateLogos, setAffiliateLogos] = useState([]);
+  const extraLogos = useMemo(() => [...affiliateLogos, ...customLogos], [affiliateLogos, customLogos]);
   const { activeCommonsCount, allLogos, baseLogos, logoById } = useLogoCatalog({
     fallbackLogos: DEFAULT_LOGOS,
     remoteLogos,
-    customLogos
+    customLogos: extraLogos
   });
 
   const [centerLogo, setCenterLogo] = useState(initialConfig.centerLogo);
@@ -451,7 +647,12 @@ export default function App() {
 
   const [showGuides, setShowGuides] = useState(initialConfig.showGuides);
   const [backdrop, setBackdrop] = useState(initialConfig.backdrop);
-  const [uploadError, setUploadError] = useState('');
+  const [commonsInput, setCommonsInput] = useState('');
+  const [commonsLoading, setCommonsLoading] = useState(false);
+  const [commonsStatus, setCommonsStatus] = useState(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [affiliateLoadingById, setAffiliateLoadingById] = useState({});
+  const [affiliateErrorById, setAffiliateErrorById] = useState({});
   const [exportSize, setExportSize] = useState(1600);
   const [exportBackground, setExportBackground] = useState('preview');
   const [exportStatus, setExportStatus] = useState('');
@@ -460,6 +661,22 @@ export default function App() {
   const { presets: customPresets, savePreset, deletePreset, importPresets } = useCustomPresets();
   const imageCache = useLogoImageCache(allLogos);
   const backdropFill = getBackdropFill(backdrop);
+  const affiliateById = useMemo(() => new Map(AFFILIATE_LOGOS.map((entry) => [entry.id, entry])), []);
+  const hydratedAffiliateIds = useMemo(() => new Set(affiliateLogos.map((logo) => logo.id)), [affiliateLogos]);
+  const coreLibraryEntries = useMemo(
+    () =>
+      baseLogos.map((logo) => ({
+        id: logo.id,
+        kind: 'core',
+        kindLabel: 'Core logos',
+        code: '',
+        name: logo.name,
+        commonsTitle: logo.commonsTitle,
+        metaPageUrl: commonsFilePageUrl(logo)
+      })),
+    [baseLogos]
+  );
+  const logoLibraryEntries = useMemo(() => [...coreLibraryEntries, ...AFFILIATE_LOGOS], [coreLibraryEntries]);
 
   const collisionSafeLogoScale = useMemo(() => getCollisionSafeLogoScale(ringRadius, ringLogos.length), [ringRadius, ringLogos.length]);
   const manualLogoScale = Math.min(ringScale, collisionSafeLogoScale);
@@ -614,56 +831,67 @@ export default function App() {
     setRingLogos((current) => (current.includes(id) && current.length > 1 ? current.filter((itemId) => itemId !== id) : current));
   }
 
-  function handleUpload(event) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    if (!file) return;
+  async function handleAddCommonsLogo(event) {
+    event.preventDefault();
+    const value = commonsInput.trim();
+    if (!value || commonsLoading) return;
 
-    const isSvg = file.type.includes('svg') || file.name.toLowerCase().endsWith('.svg');
-    const isImage = file.type.startsWith('image/');
-
-    if (!isSvg && !isImage) {
-      setUploadError('Use an SVG, PNG, or JPG file.');
-      return;
+    setCommonsLoading(true);
+    setCommonsStatus(null);
+    try {
+      const logo = await fetchCommonsLogo(value);
+      // Replace any earlier fetch of the same file, then append.
+      setCustomLogos((current) => [...current.filter((item) => item.id !== logo.id), logo]);
+      setCommonsInput('');
+      setCommonsStatus({ type: 'success', message: `Added “${logo.name}”.` });
+    } catch (error) {
+      setCommonsStatus({ type: 'error', message: error.message || 'Could not add that logo.' });
+    } finally {
+      setCommonsLoading(false);
     }
+  }
 
-    const reader = new FileReader();
-    const uniqueId = `custom-${Date.now()}`;
+  async function ensureAffiliateLogo(entry, { signal } = {}) {
+    if (!entry) return null;
+    if (entry.kind === 'core') return logoById.get(entry.id) || null;
 
-    reader.onload = (readerEvent) => {
-      const content = readerEvent.target?.result;
-      if (typeof content !== 'string') return;
+    const loadedLogo = logoById.get(entry.id);
+    if (loadedLogo) return loadedLogo;
 
-      const svg = isSvg
-        ? sanitizeSvgMarkup(content)
-        : `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <image href="${content}" x="5" y="5" width="90" height="90" preserveAspectRatio="xMidYMid meet" />
-          </svg>`;
+    setAffiliateLoadingById((current) => ({ ...current, [entry.id]: true }));
+    setAffiliateErrorById((current) => {
+      const { [entry.id]: removed, ...rest } = current;
+      return rest;
+    });
 
-      if (!svg) {
-        setUploadError('That SVG could not be parsed safely.');
-        return;
+    try {
+      const logo = await fetchCatalogCommonsLogo(entry, { signal });
+      setAffiliateLogos((current) => [...current.filter((item) => item.id !== logo.id), logo]);
+      return logo;
+    } catch (error) {
+      if (signal?.aborted) return null;
+      setAffiliateErrorById((current) => ({ ...current, [entry.id]: error.message || 'Could not load this logo.' }));
+      return null;
+    } finally {
+      if (!signal?.aborted) {
+        setAffiliateLoadingById((current) => {
+          const { [entry.id]: removed, ...rest } = current;
+          return rest;
+        });
       }
-
-      setCustomLogos((current) => [
-        ...current,
-        {
-          id: uniqueId,
-          name: file.name.replace(/\.[^.]+$/, '') || 'Uploaded Logo',
-          color: '#475569',
-          svg,
-          source: 'upload'
-        }
-      ]);
-      setUploadError('');
-      input.value = '';
-    };
-
-    if (isSvg) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsDataURL(file);
     }
+  }
+
+  async function addLibraryLogoToRing(entry) {
+    const logo = entry.kind === 'core' ? logoById.get(entry.id) : await ensureAffiliateLogo(entry);
+    if (!logo || logo.id === centerLogo) return;
+
+    setRingLogos((current) => (current.includes(logo.id) ? current : [...current, logo.id]));
+  }
+
+  async function setLibraryLogoAsCenter(entry) {
+    const logo = entry.kind === 'core' ? logoById.get(entry.id) : await ensureAffiliateLogo(entry);
+    if (logo) selectCenterLogo(logo.id);
   }
 
   function toggleRingItem(id) {
@@ -674,6 +902,26 @@ export default function App() {
       return current.length > 1 ? current.filter((itemId) => itemId !== id) : current;
     });
   }
+
+  useEffect(() => {
+    const idsToHydrate = [centerLogo, ...ringLogos].filter(
+      (id) => affiliateById.has(id) && !hydratedAffiliateIds.has(id) && !affiliateLoadingById[id] && !affiliateErrorById[id]
+    );
+
+    if (idsToHydrate.length === 0) return undefined;
+
+    const controller = new AbortController();
+    idsToHydrate.forEach((id) => {
+      ensureAffiliateLogo(affiliateById.get(id), { signal: controller.signal });
+    });
+
+    return () => {
+      controller.abort();
+    };
+    // Hydration intentionally follows selected ids; ensureAffiliateLogo is local
+    // and recreated per render, but its state writes are guarded by the id filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [affiliateById, affiliateErrorById, affiliateLoadingById, centerLogo, hydratedAffiliateIds, ringLogos]);
 
   function shiftRingItem(index, direction) {
     setRingLogos((current) => {
@@ -844,6 +1092,10 @@ export default function App() {
             <section className="control-section" aria-labelledby="central-logo-heading">
               <SectionHeader id="central-logo-heading" accent="red" title="2. Central Logo" meta={`ID: ${centerLogo}`} />
               <CentralLogoPicker logos={allLogos} selectedLogo={selectedCenterLogo} value={centerLogo} onChange={selectCenterLogo} />
+              <button type="button" className="library-inline-button" onClick={() => setLibraryOpen(true)}>
+                <Library className="h-4 w-4" aria-hidden="true" focusable="false" />
+                <span>Browse logo library</span>
+              </button>
             </section>
 
             <section className="control-section" aria-labelledby="ring-distribution-heading">
@@ -851,6 +1103,14 @@ export default function App() {
               <p className="section-note" id="ring-distribution-note">
                 Current spacing <strong>{(360 / ringLogos.length).toFixed(1)} degrees</strong>. The central logo is excluded from this ring.
               </p>
+
+              <div className="library-section-tools">
+                <button type="button" className="secondary-action library-open-action" onClick={() => setLibraryOpen(true)}>
+                  <Library className="h-4 w-4" aria-hidden="true" focusable="false" />
+                  <span>Logo library</span>
+                </button>
+                <span>{AFFILIATE_LOGOS.length} affiliate SVG logos available on demand</span>
+              </div>
 
               <div className="logo-grid" role="group" aria-describedby="ring-distribution-note" aria-label="Surrounding logo selection">
                 {allLogos.map((logo) => {
@@ -1037,21 +1297,37 @@ export default function App() {
               </div>
             </section>
 
-            <section className="upload-panel" aria-labelledby="upload-heading">
-              <h3 id="upload-heading">
-                <Upload className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
-                Upload Custom Logo
+            <section className="upload-panel" aria-labelledby="commons-add-heading">
+              <h3 id="commons-add-heading">
+                <Cloud className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+                Add a Commons logo
               </h3>
-              <p>SVG, PNG, or JPG files become local-only custom nodes.</p>
-              <label>
-                <ImageIcon className="h-8 w-8" aria-hidden="true" focusable="false" />
-                <span>Click to select file</span>
-                <small>SVG vector formats recommended</small>
-                <input type="file" accept=".svg,image/png,image/jpeg" onChange={handleUpload} />
-              </label>
-              {uploadError && (
-                <p className="error-text" role="alert">
-                  {uploadError}
+              <p>Paste a Wikimedia Commons file URL or title (e.g. File:Example.svg). SVG files only.</p>
+              <form className="commons-add-form" onSubmit={handleAddCommonsLogo}>
+                <input
+                  type="text"
+                  value={commonsInput}
+                  onChange={(event) => setCommonsInput(event.target.value)}
+                  placeholder="commons.wikimedia.org/wiki/File:… or File:….svg"
+                  aria-label="Wikimedia Commons file URL or title"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                <button type="submit" className="secondary-action" disabled={commonsLoading || !commonsInput.trim()}>
+                  {commonsLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" focusable="false" />
+                  ) : (
+                    <Download className="h-4 w-4" aria-hidden="true" focusable="false" />
+                  )}
+                  <span>{commonsLoading ? 'Fetching…' : 'Fetch'}</span>
+                </button>
+              </form>
+              {commonsStatus && (
+                <p
+                  className={commonsStatus.type === 'error' ? 'error-text' : 'section-note'}
+                  role={commonsStatus.type === 'error' ? 'alert' : 'status'}
+                >
+                  {commonsStatus.message}
                 </p>
               )}
             </section>
@@ -1167,6 +1443,20 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      <LogoLibraryDialog
+        centerLogo={centerLogo}
+        entries={logoLibraryEntries}
+        errorById={affiliateErrorById}
+        loadingById={affiliateLoadingById}
+        logoById={logoById}
+        onAddToRing={addLibraryLogoToRing}
+        onClose={() => setLibraryOpen(false)}
+        onRemoveFromRing={toggleRingItem}
+        onSetCenter={setLibraryLogoAsCenter}
+        open={libraryOpen}
+        ringLogos={ringLogos}
+      />
 
       <footer className="app-footer">
         <span className="footer-sync">{syncState.detail || syncState.label}</span>
