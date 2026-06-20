@@ -292,9 +292,22 @@ app.get('/api/logo', async (req, res) => {
   }
 });
 
-app.use(express.static(distDir, { etag: true, maxAge: '1h' }));
+app.use(
+  express.static(distDir, {
+    etag: true,
+    immutable: true,
+    index: false,
+    maxAge: '1y',
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    }
+  })
+);
 
 app.get(/.*/, (req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(distDir, 'index.html'));
 });
 
