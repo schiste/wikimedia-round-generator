@@ -43,6 +43,7 @@ TOOLFORGE_TOOL=logo-round-gen
 TOOLFORGE_REPO_DIR=/data/project/logo-round-gen/www/js
 TOOLFORGE_BRANCH=main
 TOOLFORGE_WEB_URL=https://logo-round-gen.toolforge.org
+TOOLFORGE_VERIFY_TIMEOUT_SECONDS=45
 ```
 
 ## Workflow
@@ -76,6 +77,7 @@ ssh -i ~/.ssh/id_ed25519_toolforge -o BatchMode=yes schiste@login.toolforge.org 
 
 - If the public homepage shows an old asset fingerprint immediately after restart, check Toolforge logs first; the `npm start` path rebuilds in the pod and can take around 40 seconds.
 - If the homepage is stale but cache-busted HTML is current, verify `server.js` still serves app-shell HTML with `Cache-Control: no-cache`.
+- If forced Commons refresh checks are slow, raise `TOOLFORGE_VERIFY_TIMEOUT_SECONDS` rather than removing verification.
 
 ## Useful Commands
 

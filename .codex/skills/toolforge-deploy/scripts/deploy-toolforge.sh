@@ -12,6 +12,7 @@ TOOLFORGE_BRANCH="${TOOLFORGE_BRANCH:-main}"
 TOOLFORGE_WEBSERVICE_TYPE="${TOOLFORGE_WEBSERVICE_TYPE:-node20}"
 TOOLFORGE_WEB_URL="${TOOLFORGE_WEB_URL:-https://logo-round-gen.toolforge.org}"
 TOOLFORGE_RESTART_WAIT_SECONDS="${TOOLFORGE_RESTART_WAIT_SECONDS:-50}"
+TOOLFORGE_VERIFY_TIMEOUT_SECONDS="${TOOLFORGE_VERIFY_TIMEOUT_SECONDS:-45}"
 EXPECTED_LOGO_COUNT="${EXPECTED_LOGO_COUNT:-14}"
 
 SKIP_BUILD=0
@@ -39,6 +40,7 @@ Environment overrides:
   TOOLFORGE_REPO_DIR=$TOOLFORGE_REPO_DIR
   TOOLFORGE_BRANCH=$TOOLFORGE_BRANCH
   TOOLFORGE_WEB_URL=$TOOLFORGE_WEB_URL
+  TOOLFORGE_VERIFY_TIMEOUT_SECONDS=$TOOLFORGE_VERIFY_TIMEOUT_SECONDS
 USAGE
 }
 
@@ -107,29 +109,33 @@ verify_public() {
   log "Verifying $TOOLFORGE_WEB_URL at $short_commit"
 
   local headers
-  headers="$(curl -fsSI "$TOOLFORGE_WEB_URL/")"
+  headers="$(curl --max-time "$TOOLFORGE_VERIFY_TIMEOUT_SECONDS" -fsSI "$TOOLFORGE_WEB_URL/")"
   printf '%s\n' "$headers"
   grep -qi '^HTTP/.* 200' <<<"$headers"
   grep -qi '^cache-control: no-cache' <<<"$headers"
 
   local html asset_path asset_headers
-  html="$(curl -fsS -H 'Cache-Control: no-cache' "$TOOLFORGE_WEB_URL/?verify=$short_commit")"
+  html="$(curl --max-time "$TOOLFORGE_VERIFY_TIMEOUT_SECONDS" -fsS -H 'Cache-Control: no-cache' "$TOOLFORGE_WEB_URL/?verify=$short_commit")"
   asset_path="$(grep -o '/assets/index-[^"]*\.js' <<<"$html" | head -n 1)"
   if [[ -z "$asset_path" ]]; then
     echo "Could not find hashed JS asset in deployed HTML." >&2
     exit 1
   fi
 
-  asset_headers="$(curl -fsSI "$TOOLFORGE_WEB_URL$asset_path")"
+  asset_headers="$(curl --max-time "$TOOLFORGE_VERIFY_TIMEOUT_SECONDS" -fsSI "$TOOLFORGE_WEB_URL$asset_path")"
   printf '%s\n' "$asset_headers"
   grep -qi '^HTTP/.* 200' <<<"$asset_headers"
   grep -qi '^cache-control: public, max-age=31536000, immutable' <<<"$asset_headers"
 
-  node --input-type=module - "$TOOLFORGE_WEB_URL" "$short_commit" "$EXPECTED_LOGO_COUNT" <<'NODE'
-const [baseUrl, commit, expectedLogoCount] = process.argv.slice(2);
+  node --input-type=module - "$TOOLFORGE_WEB_URL" "$short_commit" "$EXPECTED_LOGO_COUNT" "$TOOLFORGE_VERIFY_TIMEOUT_SECONDS" <<'NODE'
+const [baseUrl, commit, expectedLogoCount, timeoutSeconds] = process.argv.slice(2);
+const timeoutMs = Number(timeoutSeconds) * 1000;
 
 async function readJson(path) {
-  const response = await fetch(`${baseUrl}${path}`);
+  console.error(`Checking ${path}`);
+  const response = await fetch(`${baseUrl}${path}`, {
+    signal: AbortSignal.timeout(timeoutMs)
+  });
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}: ${payload.message || JSON.stringify(payload)}`);
