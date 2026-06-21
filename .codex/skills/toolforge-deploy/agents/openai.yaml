@@ -1,0 +1,4 @@
+interface:
+  display_name: "Toolforge Deploy"
+  short_description: "Deploy this app to Toolforge"
+  default_prompt: "Use $toolforge-deploy to build, push, deploy, and verify this Toolforge app."
