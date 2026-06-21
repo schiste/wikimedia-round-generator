@@ -11,7 +11,8 @@ TOOLFORGE_REPO_DIR="${TOOLFORGE_REPO_DIR:-/data/project/logo-round-gen/www/js}"
 TOOLFORGE_BRANCH="${TOOLFORGE_BRANCH:-main}"
 TOOLFORGE_WEBSERVICE_TYPE="${TOOLFORGE_WEBSERVICE_TYPE:-node20}"
 TOOLFORGE_WEB_URL="${TOOLFORGE_WEB_URL:-https://logo-round-gen.toolforge.org}"
-TOOLFORGE_RESTART_WAIT_SECONDS="${TOOLFORGE_RESTART_WAIT_SECONDS:-50}"
+TOOLFORGE_READY_TIMEOUT_SECONDS="${TOOLFORGE_READY_TIMEOUT_SECONDS:-180}"
+TOOLFORGE_READY_POLL_SECONDS="${TOOLFORGE_READY_POLL_SECONDS:-5}"
 TOOLFORGE_VERIFY_TIMEOUT_SECONDS="${TOOLFORGE_VERIFY_TIMEOUT_SECONDS:-45}"
 EXPECTED_LOGO_COUNT="${EXPECTED_LOGO_COUNT:-14}"
 
@@ -40,6 +41,8 @@ Environment overrides:
   TOOLFORGE_REPO_DIR=$TOOLFORGE_REPO_DIR
   TOOLFORGE_BRANCH=$TOOLFORGE_BRANCH
   TOOLFORGE_WEB_URL=$TOOLFORGE_WEB_URL
+  TOOLFORGE_READY_TIMEOUT_SECONDS=$TOOLFORGE_READY_TIMEOUT_SECONDS
+  TOOLFORGE_READY_POLL_SECONDS=$TOOLFORGE_READY_POLL_SECONDS
   TOOLFORGE_VERIFY_TIMEOUT_SECONDS=$TOOLFORGE_VERIFY_TIMEOUT_SECONDS
 USAGE
 }
@@ -103,6 +106,25 @@ ensure_clean_worktree() {
     echo "Refusing to deploy with uncommitted changes. Commit or stash them first." >&2
     exit 1
   fi
+}
+
+wait_for_public_ready() {
+  local deadline status
+  deadline=$(($(date +%s) + TOOLFORGE_READY_TIMEOUT_SECONDS))
+
+  while [[ "$(date +%s)" -lt "$deadline" ]]; do
+    status="$(curl --max-time "$TOOLFORGE_VERIFY_TIMEOUT_SECONDS" -fsS -o /dev/null -w '%{http_code}' "$TOOLFORGE_WEB_URL/api/healthz" || true)"
+    if [[ "$status" == "200" ]]; then
+      echo "Toolforge health check is ready."
+      return 0
+    fi
+
+    echo "Waiting for Toolforge health check; last status: ${status:-curl-error}"
+    sleep "$TOOLFORGE_READY_POLL_SECONDS"
+  done
+
+  echo "Timed out waiting for Toolforge health check after ${TOOLFORGE_READY_TIMEOUT_SECONDS}s." >&2
+  exit 1
 }
 
 verify_public() {
@@ -217,8 +239,8 @@ if [[ "$VERIFY_ONLY" -eq 0 ]]; then
     log "Restarting Toolforge webservice"
     run_remote "toolforge webservice $(remote_quote "$TOOLFORGE_WEBSERVICE_TYPE") restart"
 
-    log "Waiting ${TOOLFORGE_RESTART_WAIT_SECONDS}s for Toolforge build/start"
-    sleep "$TOOLFORGE_RESTART_WAIT_SECONDS"
+    log "Waiting for Toolforge health check"
+    wait_for_public_ready
 
     log "Recent Toolforge logs"
     run_remote 'toolforge webservice -l 60 logs'
