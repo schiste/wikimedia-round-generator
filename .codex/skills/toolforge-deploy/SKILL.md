@@ -59,8 +59,9 @@ TOOLFORGE_VERIFY_TIMEOUT_SECONDS=45
 7. In `/data/project/logo-round-gen/www/js`, `git fetch origin main` then `git reset --hard origin/main`.
 8. Confirm the remote commit matches the pushed commit.
 9. Run `toolforge webservice node20 restart`.
-10. Wait for `/api/healthz` to return `200`, then inspect recent logs.
-11. Verify public responses:
+10. Wait for a fresh `WikiRound server listening` Toolforge log line, then wait for `/api/healthz` to return `200`.
+11. Inspect recent logs.
+12. Verify public responses:
     - `/` returns `200` with `Cache-Control: no-cache`.
     - Hashed JS/CSS assets return `public, max-age=31536000, immutable`.
     - `/api/healthz` returns OK.
@@ -78,7 +79,7 @@ ssh -i ~/.ssh/id_ed25519_toolforge -o BatchMode=yes schiste@login.toolforge.org 
 ```
 
 - If the public homepage shows an old asset fingerprint immediately after restart, check Toolforge logs first; the `npm start` path rebuilds in the pod and can take around 40 seconds.
-- If Toolforge builds are slower than usual, raise `TOOLFORGE_READY_TIMEOUT_SECONDS`; do not replace readiness polling with a fixed sleep.
+- If Toolforge builds are slower than usual, raise `TOOLFORGE_READY_TIMEOUT_SECONDS`; do not replace the fresh-log and health polling with a fixed sleep.
 - If the homepage is stale but cache-busted HTML is current, verify `server.js` still serves app-shell HTML with `Cache-Control: no-cache`.
 - If forced Commons refresh checks are slow, raise `TOOLFORGE_VERIFY_TIMEOUT_SECONDS` rather than removing verification.
 

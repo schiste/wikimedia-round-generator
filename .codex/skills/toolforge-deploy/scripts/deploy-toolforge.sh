@@ -127,6 +127,30 @@ wait_for_public_ready() {
   exit 1
 }
 
+latest_server_log() {
+  run_remote "toolforge webservice -l 120 logs | grep 'WikiRound server listening' | tail -n 1" || true
+}
+
+wait_for_fresh_server_log() {
+  local previous_line="$1"
+  local deadline current_line
+  deadline=$(($(date +%s) + TOOLFORGE_READY_TIMEOUT_SECONDS))
+
+  while [[ "$(date +%s)" -lt "$deadline" ]]; do
+    current_line="$(latest_server_log)"
+    if [[ -n "$current_line" && "$current_line" != "$previous_line" ]]; then
+      echo "$current_line"
+      return 0
+    fi
+
+    echo "Waiting for new Toolforge server listening log..."
+    sleep "$TOOLFORGE_READY_POLL_SECONDS"
+  done
+
+  echo "Timed out waiting for a fresh Toolforge server listening log after ${TOOLFORGE_READY_TIMEOUT_SECONDS}s." >&2
+  exit 1
+}
+
 verify_public() {
   log "Verifying $TOOLFORGE_WEB_URL at $short_commit"
 
@@ -236,10 +260,15 @@ if [[ "$VERIFY_ONLY" -eq 0 ]]; then
       exit 1
     fi
 
+    previous_server_log="$(latest_server_log)"
+
     log "Restarting Toolforge webservice"
     run_remote "toolforge webservice $(remote_quote "$TOOLFORGE_WEBSERVICE_TYPE") restart"
 
-    log "Waiting for Toolforge health check"
+    log "Waiting for restarted Toolforge server log"
+    wait_for_fresh_server_log "$previous_server_log"
+
+    log "Checking Toolforge health endpoint"
     wait_for_public_ready
 
     log "Recent Toolforge logs"
