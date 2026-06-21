@@ -143,11 +143,46 @@ a:focus-visible {
   gap: 2px;
 }
 
-.top-band-title h1 {
+.app-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.app-picker h1 {
   margin: 0;
+}
+
+.app-picker-button {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  text-align: left;
   font-size: 14px;
   font-weight: 780;
   line-height: 1;
+  cursor: pointer;
+}
+
+.app-picker-button:hover,
+.app-picker-button:focus-visible {
+  color: var(--accent);
+}
+
+.app-picker-button svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.app-picker-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .top-band-title p,
@@ -165,6 +200,59 @@ a:focus-visible {
   margin: 0;
   font-size: 11px;
   line-height: 1.15;
+}
+
+.app-picker-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 320px;
+  max-width: calc(100vw - 28px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  padding: 8px;
+}
+
+.app-picker-option {
+  display: block;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px;
+  text-decoration: none;
+}
+
+.app-picker-option:hover,
+.app-picker-option:focus-visible {
+  background: var(--surface-hover);
+}
+
+.app-picker-option-current {
+  background: var(--surface-hover);
+}
+
+.app-picker-option-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.app-picker-option-current .app-picker-option-title {
+  color: var(--accent);
+}
+
+.app-picker-option-description {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .top-band-actions {

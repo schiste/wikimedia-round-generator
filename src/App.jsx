@@ -54,6 +54,45 @@ const EXPORT_BACKGROUNDS = [
   { id: 'white', label: 'White' },
   { id: 'dark', label: 'Dark' }
 ];
+const APP_PICKER_OPTIONS = [
+  {
+    id: 'wikiround',
+    name: 'WikiRound Generator',
+    description: 'Live Wikimedia logo clusters',
+    href: '/',
+    current: true
+  },
+  {
+    id: 'qr-generator',
+    name: 'Wikimedia QR Generator',
+    description: 'Client-side codes for movement links and campaign pages',
+    href: 'https://wikimedia-qr-generator.toolforge.org/'
+  }
+];
+
+function useDismissableMenu(open, setOpen) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handlePointer(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open, setOpen]);
+
+  return menuRef;
+}
 
 function formatCommonsDate(value) {
   if (!value) return '';
@@ -146,27 +185,55 @@ function RefreshButton({ syncState, onRefresh }) {
   );
 }
 
+function AppPicker() {
+  const [open, setOpen] = useState(false);
+  const menuRef = useDismissableMenu(open, setOpen);
+  const currentApp = APP_PICKER_OPTIONS.find((option) => option.current) || APP_PICKER_OPTIONS[0];
+
+  return (
+    <div className="app-picker" ref={menuRef}>
+      <h1>
+        <button
+          type="button"
+          className="app-picker-button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Choose Wikimedia generator"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span className="app-picker-title">{currentApp.name}</span>
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
+        </button>
+      </h1>
+      <p>{currentApp.description}</p>
+
+      {open && (
+        <div className="app-picker-menu" role="menu" aria-label="Wikimedia generator picker">
+          {APP_PICKER_OPTIONS.map((option) => (
+            <a
+              key={option.id}
+              className={`app-picker-option ${option.current ? 'app-picker-option-current' : ''}`}
+              href={option.href}
+              role="menuitem"
+              aria-current={option.current ? 'page' : undefined}
+              onClick={() => setOpen(false)}
+            >
+              <span className="app-picker-option-title">
+                <span>{option.name}</span>
+                {option.current && <Check className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />}
+              </span>
+              <span className="app-picker-option-description">{option.description}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DesignToolbar({ presets, onSave, onApply, onDelete, onExport, onImport }) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    function handlePointer(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
-    }
-    function handleKey(event) {
-      if (event.key === 'Escape') setOpen(false);
-    }
-
-    document.addEventListener('mousedown', handlePointer);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handlePointer);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
+  const menuRef = useDismissableMenu(open, setOpen);
 
   async function handleImport(event) {
     const file = event.target.files?.[0];
@@ -784,8 +851,7 @@ export default function App() {
       </a>
       <header className="top-band">
         <div className="top-band-title">
-          <h1>WikiRound Generator</h1>
-          <p>Live Wikimedia logo clusters</p>
+          <AppPicker />
         </div>
         <div className="top-band-actions">
           <DesignToolbar
